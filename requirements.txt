@@ -6,3 +6,4 @@ open3d
 scipy
 termcolor
 pynput
+rospkg

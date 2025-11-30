@@ -188,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument("--demo_min_idx", type=int, default=0)
     parser.add_argument('--demo_num', type=int, default=200)
     parser.add_argument("--nots", action="store_true", default=False)
-    parser.add_argument('--render_types', default=["rgb","depth"], type=list, help='render types, comma separated, options: rgb, depth')
+    parser.add_argument('--render_types', default="rgb,depth", type=str, help='render types, comma separated, options: rgb, depth')
     args_cli = parser.parse_args()
     args_cli.render_types = args_cli.render_types.split(',')
     scene_config = EasyDict(yaml.safe_load(Path(args_cli.cfg_path).open('r')))

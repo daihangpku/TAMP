@@ -1,4 +1,5 @@
 # Installation
+Install ros/noetic first
 ```bash
 conda create -n genesis python=3.10 -y
 conda activate genesis
