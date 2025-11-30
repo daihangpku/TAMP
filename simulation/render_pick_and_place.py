@@ -15,13 +15,10 @@ from pathlib import Path
 from easydict import EasyDict
 import open3d as o3d
 os.environ["PYOPENGL_PLATFORM"] = "egl"
-import pyrender
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from simulation.utils.gs_viewer_utils import load_camera_params, colmap_to_pyrender
 from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
-from simulation.gs_viewer import render_and_save_specific_view, GenesisGaussianViewer
 
 def render_scene(scene_dict, data, grasp_cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
     if data is not None:
@@ -29,10 +26,10 @@ def render_scene(scene_dict, data, grasp_cam, args_cli=None, znear=0.1, render_t
         object_active = scene_dict["object_active"]
         object_passive = scene_dict["object_passive"]
         robot.set_dofs_position(data["joint_states"])
-        passive_pos = data["object_states"]["plate"][:3]
-        passive_quat = data["object_states"]["plate"][3:7]
-        active_pos = data["object_states"]["object"][:3]
-        active_quat = data["object_states"]["object"][3:7]
+        passive_pos = data["object_states"]["passive"][:3]
+        passive_quat = data["object_states"]["passive"][3:7]
+        active_pos = data["object_states"]["active"][:3]
+        active_quat = data["object_states"]["active"][3:7]
         object_passive.set_pos(passive_pos)
         object_passive.set_quat(passive_quat)
         object_active.set_pos(active_pos)
@@ -46,6 +43,7 @@ def render_scene(scene_dict, data, grasp_cam, args_cli=None, znear=0.1, render_t
         return rgb_image, depth_image
 
     # 使用仿真相机渲染
+    import ipdb; ipdb.set_trace()
     rgb_raw, depth_raw = grasp_cam.render(rgb=need_rgb, depth=need_depth)
     sim_rgb = rgb_raw if need_rgb else None
     sim_depth = depth_raw if need_depth else None
@@ -181,75 +179,6 @@ def visualize_rgbd(rgb, depth, camera_intr, depth_scale=1000.0):
     # 4. 可视化
     o3d.io.write_point_cloud("debug.ply", pcd)
 
-def init_renderers(scene_asset_path_dict, scene_dict, args_cli, render_types=["rgb", "depth"]):
-    gs_viewer_nontable = GenesisGaussianViewer({key: value for key, value in scene_asset_path_dict.items() if key != "background"}, 
-                                {key: value for key, value in scene_dict.items() if key != "background"},
-                                args_cli=args_cli,
-                                render_depth="depth" in render_types)
-    gs_viewer_table = GenesisGaussianViewer({key: value for key, value in scene_asset_path_dict.items() if key == "background"}, 
-                                    {key: value for key, value in scene_dict.items() if key == "background"},
-                                    args_cli=args_cli,
-                                    render_depth="depth" in render_types)
-
-    _, _, R, T = load_extrinsics("assets/realsense/cam_extr.txt")
-    w2c = np.eye(4)
-    w2c[:3, :3] = R
-    w2c[:3, 3] = T
-    _, camera_intr = load_camera_params()
-    offscreen_renderer = None
-    
-    if "depth" in render_types:
-        # colmap to pyrender camera
-        camera_pose = colmap_to_pyrender(w2c)
-        
-        # add camera
-        znear=0.1
-        zfar=1000
-        camera = pyrender.IntrinsicsCamera(
-            fx=camera_intr["fx"],
-            fy=camera_intr["fy"],
-            cx=camera_intr["cx"],
-            cy=camera_intr["cy"],
-            znear=znear,
-            zfar=zfar
-        )
-        gs_viewer_nontable.mesh_viewer.add(camera, pose=camera_pose)
-        gs_viewer_table.mesh_viewer.add(camera, pose=camera_pose)
-        
-        light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=3.0)
-        gs_viewer_nontable.mesh_viewer.add(light, pose=camera_pose)
-        gs_viewer_table.mesh_viewer.add(light, pose=camera_pose)
-        
-        offscreen_renderer = pyrender.OffscreenRenderer(viewport_width=camera_intr["image_width"], viewport_height=camera_intr["image_height"])
-    return gs_viewer_nontable, gs_viewer_table, offscreen_renderer, w2c, camera_intr
-
-def prepare_background(offscreen_renderer, gs_viewer_table, camera_intr, w2c, args_cli, render_types=["rgb", "depth"]):
-    if "depth" in render_types:
-        print("Preparing background depth")
-        _, table_depth = offscreen_renderer.render(gs_viewer_table.mesh_viewer)
-        print('done.')
-    else:
-        table_depth = None
-    if "rgb" in render_types:
-        rendered_table = render_and_save_specific_view(
-            gs_viewer_table.viewer_renderer, 
-            torch.device("cuda"),
-            None,
-            camera_intr,
-            R = w2c[:3, :3],
-            T = w2c[:3, 3],
-            verbose=False,
-            render_alpha=False,
-            render_depth=False,
-            return_outputs=True,
-            save=False,
-            return_torch = True,
-        )
-        table_rgb_image = rendered_table["rgb_image"][:, :, :3]
-    else:
-        table_rgb_image = None
-    return table_rgb_image, table_depth
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--record_dir", type=str, default=None)
@@ -259,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument("--demo_min_idx", type=int, default=0)
     parser.add_argument('--demo_num', type=int, default=200)
     parser.add_argument("--nots", action="store_true", default=False)
-    parser.add_argument('--render_types', default="rgb,depth", type=str, help='render types, comma separated, options: rgb, depth')
+    parser.add_argument('--render_types', default=["rgb","depth"], type=list, help='render types, comma separated, options: rgb, depth')
     args_cli = parser.parse_args()
     args_cli.render_types = args_cli.render_types.split(',')
     scene_config = EasyDict(yaml.safe_load(Path(args_cli.cfg_path).open('r')))
