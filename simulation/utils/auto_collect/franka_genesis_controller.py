@@ -17,7 +17,7 @@ except:
     print("rospy not loaded. Teleop mode will be disabled.")
 
 class franka_controller:
-    def __init__(self, scene, robot, close_thres, teleop=False, evaluation=False, default_gripper_state=False, default_joint_angles=DEFAULT_JOINT_ANGLES):
+    def __init__(self, scene, robot, close_thres, teleop=None, evaluation=False, default_gripper_state=False, default_joint_angles=DEFAULT_JOINT_ANGLES):
         """
         Initialize the Franka controller with the specified IK type and simulation settings.
 
@@ -31,7 +31,7 @@ class franka_controller:
         if evaluation:
             # ik in policy
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
-        elif teleop:
+        elif teleop=="pico" or teleop==True:
             # ik in teleop
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=True, simulator="genesis", no_solver=True)
         else:
@@ -120,6 +120,7 @@ class franka_controller:
         current_ee_pose_list = current_ee_pose.flatten().tolist()
         current_ee_msg = Float64MultiArray(data=current_ee_pose_list)
         self.pub_ee.publish(current_ee_msg)
+        # print(current_ee_pose_list)
 
     def move_to_goal(self, pos, quat, gripper_open=True, quick=False):
         """
@@ -143,12 +144,8 @@ class franka_controller:
             
         if result and len(result):
             if quick:
-                import time
-                time1 = time.time()
                 self.franka.control_dofs_position((result[-1]+self.open_state if gripper_open else result[-1]+self.close_state))
                 self.step()
-                time2 = time.time()
-                print(f"Quick move time: {time2-time1}")
             else:
                 for waypoint in result:
                     self.current_control = np.array(waypoint)
@@ -208,6 +205,7 @@ class franka_controller:
         if self.teleop or self.evaluation:
             self.publish_states()
         self.scene.step()
+        print(self.current_control)
         if self.record_started:
             self.record_step()
 

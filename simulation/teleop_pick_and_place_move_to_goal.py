@@ -14,7 +14,13 @@ import genesis as gs
 from simulation.utils.constants import BEST_PARAMS, JOINT_NAMES
 from simulation.utils.auto_collect.franka_genesis_controller import pick_and_place_controller
 from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
-
+try:
+    import rospy
+    from std_msgs.msg import Float64MultiArray, Bool
+    ROSPY_ENABLED = True
+except:
+    ROSPY_ENABLED = False
+    print("rospy not loaded. Teleop mode will be disabled.")
 
 def main(args):
     scene_config = EasyDict(yaml.safe_load(Path(args.cfg_path).open("r")))
@@ -55,7 +61,6 @@ def main(args):
     cprint("*" * 40, "green")
     cprint("  Initializing Controller (teleop=False, no ROS)", "green")
     cprint("*" * 40, "green")
-
     controller = pick_and_place_controller(
         scene=scene,
         scene_config=scene_config,
@@ -64,17 +69,16 @@ def main(args):
         object_passive=object_passive,
         default_poses=default_poses,
         close_thres=scene_config.robot.close_thres,
-        teleop=False,
+        teleop="keyboard",
         evaluation=False,
     )
+    sub_joint = rospy.Subscriber('/genesis/joint_states', Float64MultiArray, queue_size=1)
+    sub_ee    = rospy.Subscriber('/genesis/ee_states', Float64MultiArray, queue_size=1)
+    pub_joint_control = rospy.Publisher("/genesis/joint_control", Float64MultiArray, queue_size=1)
+    pub_gripper_control = rospy.Publisher("/genesis/gripper_control", Bool, queue_size=1)
+    
 
-    pos_step = 0.05
-
-    def get_current_ee_pose():
-        joint_pos = controller.franka.get_dofs_position().cpu().numpy()
-        trans, rot_quat = controller.franka_solver.compute_fk(joint_pos)
-        return np.array(trans, dtype=np.float32), np.array(rot_quat, dtype=np.float32)
-
+    pos_step = 0.01
     def reset_layout():
         while True:
             controller.reset_scene()
@@ -115,13 +119,15 @@ def main(args):
                 break
 
     def on_press(key):
+        print(key.char)
         try:
             c = key.char
         except AttributeError:
             return
-
+        joint_pos = controller.franka.get_dofs_position().cpu().numpy()
+        pos, quat = controller.franka_solver.compute_fk(joint_pos)
         dpos = np.zeros(3, dtype=np.float32)
-
+        gripper_open = controller.current_gripper_control
         if c == "w":
             dpos[0] += pos_step
         elif c == "s":
@@ -135,24 +141,25 @@ def main(args):
         elif c == "f":
             dpos[2] -= pos_step
         elif c == "z":
-            controller.close_gripper(wait_steps=10)
-            return
+            gripper_open = False
         elif c == "x":
-            controller.open_gripper(wait_steps=10)
-            return
+            gripper_open = True
         else:
             return
 
-        if np.linalg.norm(dpos) == 0.0:
-            return
-
-        pos, quat = get_current_ee_pose()
         target_pos = pos + dpos
-        gripper_open = not controller.current_gripper_control
-        try:
-            controller.move_to_goal(target_pos, quat, gripper_open=gripper_open, quick=True)
-        except Exception as e:
-            print("move_to_goal failed:", e)
+        current_joint_angles = controller.franka.get_dofs_position().cpu().numpy()[:7]  # 当前关节角度
+        result = controller.franka_solver.solve_ik_by_motion_gen(
+            curr_joint_state=current_joint_angles, 
+            target_trans=target_pos,
+            target_quat=quat,
+        )
+        pub_joint_control.publish(data=result[-1])
+        if gripper_open:
+            pub_gripper_control.publish(data=True)
+        else:
+            pub_gripper_control.publish(data=False)
+
 
     def on_release(key):
         nonlocal process_output_dir
@@ -189,8 +196,8 @@ def main(args):
                 listener = keyboard.Listener(on_press=on_press, on_release=on_release)
                 listener.start()
             time.sleep(0.01)
-            for cam in annotation_cams.values():
-                cam.render()
+            # for cam in annotation_cams.values():
+            #     cam.render()
             controller.step()
     except KeyboardInterrupt:
         pass
