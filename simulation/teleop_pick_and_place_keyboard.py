@@ -39,7 +39,7 @@ def main(args):
     cprint("*" * 40, "green")
 
     gs.init(backend=gs.gpu, logging_level="warning")
-    scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses = design_pnp_scene(
+    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_pnp_scene(
         scene_config, show_viewer=True
     )
     scene.build()

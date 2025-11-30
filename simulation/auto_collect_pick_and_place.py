@@ -111,6 +111,14 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
         fov    = 30,
         GUI    = False
     )
+    desk_cam = scene.add_camera(
+        res    = (1280, 720),
+        pos    = (1.5, 0.0, 0.5),
+        lookat = (0.62, 0.0, 0.0),
+        fov    = 30,
+        GUI    = False
+    )
+    cams = {"grasp_cam": grasp_cam, "desk_cam": desk_cam}
     object_active_bbox, object_active_height = get_object_bbox_and_height(scene_config.object_active.mesh_asset, scene_config.object_active.up_axis)
     # cm --> m
     active_pos   = (scene_config.object_active.default_position.x / 100,
@@ -128,7 +136,7 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
             fixed=False,
         ),
         visualize_contact=False,
-        vis_mode = "collision",
+        # vis_mode = "collision",
     )
     object_passive_bbox, object_passive_height = get_object_bbox_and_height(scene_config.object_passive.mesh_asset, scene_config.object_passive.up_axis)
     # cm --> m
@@ -146,7 +154,7 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
             fixed=True,
         ),
         visualize_contact=False,
-        vis_mode = "collision",
+        # vis_mode = "collision",
     )
     scene_dict = {
         "robot": robot,
@@ -166,7 +174,7 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
         "passive_pos": passive_pos,
         "passive_quat": passive_quat,
     }
-    return scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses
+    return scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses
 
 def render_gs(grasp_cam, gs_viewer_nonbackground, gs_viewer_background):
     topcam_intr = np.array(grasp_cam.intrinsics)

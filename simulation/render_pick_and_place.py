@@ -20,7 +20,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
 
-def render_scene(scene_dict, data, grasp_cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
+def render_scene(scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
     if data is not None:
         robot = scene_dict["robot"]
         object_active = scene_dict["object_active"]
@@ -43,8 +43,7 @@ def render_scene(scene_dict, data, grasp_cam, args_cli=None, znear=0.1, render_t
         return rgb_image, depth_image
 
     # 使用仿真相机渲染
-    import ipdb; ipdb.set_trace()
-    rgb_raw, depth_raw = grasp_cam.render(rgb=need_rgb, depth=need_depth)
+    rgb_raw, depth_raw, _, _ = cam.render(rgb=need_rgb, depth=need_depth)
     sim_rgb = rgb_raw if need_rgb else None
     sim_depth = depth_raw if need_depth else None
 
@@ -194,11 +193,11 @@ if __name__ == "__main__":
     scene_config = EasyDict(yaml.safe_load(Path(args_cli.cfg_path).open('r')))
     
     gs.init(backend=gs.gpu, logging_level = 'error')
-    scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses = design_pnp_scene(scene_config, show_viewer=False)
+    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_pnp_scene(scene_config, show_viewer=False)
     scene.build()
-
-    intr_mat = np.array(grasp_cam.intrinsics)
-    width, height = grasp_cam.res
+    desk_cam = cams["desk_cam"]
+    intr_mat = np.array(desk_cam.intrinsics)
+    width, height = desk_cam.res
     camera_intr = {
         "image_width": width,
         "image_height": height,
@@ -215,7 +214,7 @@ if __name__ == "__main__":
             for h5_file_idx in tqdm(h5_file_idxs, desc="frame"):
                 h5_path = os.path.join(demo_dir, f"{h5_file_idx}.h5")
                 data = read_h5_file(h5_path)
-                rgb_image, depth_image = render_scene(scene_dict, data, grasp_cam, args_cli, render_types=args_cli.render_types)
+                rgb_image, depth_image = render_scene(scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
                 if args_cli.debug:
                     if "rgb" in args_cli.render_types and "depth" in args_cli.render_types:
                         visualize_rgbd(rgb_image, depth_image, camera_intr)
