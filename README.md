@@ -3,7 +3,9 @@
 conda create -n genesis python=3.10 -y
 conda activate genesis
 pip install -r requirements.txt
-pip install -e simulation/curobo --no-build-isolation
+cd simulation/curobo
+pip install -e . --no-build-isolation
+cd ../..
 ```
 # Usage
 ## teleoperate using keyboard
