@@ -115,7 +115,7 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
         res    = (1280, 720),
         pos    = (1.5, 0.0, 0.5),
         lookat = (0.62, 0.0, 0.0),
-        fov    = 30,
+        fov    = 60,
         GUI    = False
     )
     cams = {"grasp_cam": grasp_cam, "desk_cam": desk_cam}
@@ -176,54 +176,6 @@ def design_scene(scene_config, show_viewer=True, use_real_background=False):
     }
     return scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses
 
-def render_gs(grasp_cam, gs_viewer_nonbackground, gs_viewer_background):
-    topcam_intr = np.array(grasp_cam.intrinsics)
-    topcam_extr = np.array(grasp_cam.extrinsics)
-    R_topcam = topcam_extr[:3, :3]
-    T_topcam = topcam_extr[:3, 3]
-    topcam_width, topcam_height = grasp_cam.res
-    intr_dict = {
-        "image_height": topcam_height,
-        "image_width": topcam_width,
-    }
-    intr_dict["fx"] = topcam_intr[0, 0]
-    intr_dict["fy"] = topcam_intr[1, 1]
-    intr_dict["cx"] = topcam_intr[0, 2]
-    intr_dict["cy"] = topcam_intr[1, 2]
-    
-    rendered_nontable = render_and_save_specific_view(
-        gs_viewer_nonbackground.viewer_renderer, 
-        torch.device("cuda"),
-        None,
-        intr_dict,
-        R = R_topcam,
-        T = T_topcam,
-        verbose=False,
-        render_alpha=True,
-        render_depth=False,
-        return_outputs=True,
-        save=False,
-    )
-    nontable_rgb_image = rendered_nontable["rgb_image"]
-    nontable_alpha_image = rendered_nontable["alpha_image"]
-
-    rendered_table = render_and_save_specific_view(
-        gs_viewer_background.viewer_renderer, 
-        torch.device("cuda"),
-        None,
-        intr_dict,
-        R = R_topcam,
-        T = T_topcam,
-        verbose=False,
-        render_alpha=True,
-        render_depth=False,
-        return_outputs=True,
-        save=False,
-    )
-    rgb_image = rendered_table["rgb_image"]
-    rgb_image = nontable_rgb_image * nontable_alpha_image[:, :, None] + (1 - nontable_alpha_image)[:, :, None] * rgb_image # 用非透明图像的 RGB 值替换透明图像的 RGB 值
-    rgb_image = rgb_image.astype(np.uint8)
-    return rgb_image
 
 def remove_non_z_rotation(rotation_matrix: np.ndarray) -> np.ndarray:
     """
@@ -387,18 +339,6 @@ def main(args):
     
     object_active.get_link("object").set_mass(0.1)
     object_active.get_link("object").set_friction(0.2)
-
-    cprint("*" * 40, "green")
-    cprint("  Initializing Gaussians", "green")
-    cprint("*" * 40, "green")
-    
-    # Init Gaussian Viewers
-    gs_viewer_nonbackground = GenesisGaussianViewer({key: value for key, value in scene_asset_path_dict.items() if key != "background"}, 
-                                                    {key: value for key, value in scene_dict.items() if key != "background"},
-                                                    args_cli=None,)
-    gs_viewer_background = GenesisGaussianViewer({key: value for key, value in scene_asset_path_dict.items() if key == "background"}, 
-                                                 {key: value for key, value in scene_dict.items() if key == "background"},
-                                                 args_cli=None,)
     
     cprint("*" * 40, "green")
     cprint("  Initializing Controller", "green")
@@ -466,22 +406,15 @@ def main(args):
             
             # Update GS buffer
             scene.step()
-            gs_viewer_nonbackground.update()
-            gs_viewer_background.update()
             
             # AnyGrasp
-            topcam_rgb = render_gs(grasp_cam, gs_viewer_nonbackground, gs_viewer_background)[:, :, :3]
-            topcam_depth = grasp_cam.render(rgb=False, depth=True)[1]
+            topcam_rgb, topcam_depth, _, _ = grasp_cam.render(rgb=True, depth=True)
+            
             topcam_extr = np.array(grasp_cam.extrinsics)
             topcam_intr = np.array(grasp_cam.intrinsics)
             grasp_rot_w, grasp_pos_w, grasp_quat_w = do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam_intr, controller, collision_detection=scene_config.collision_detection, debug=args.debug_anygrasp, debug_anygrasp_showall=args.debug_anygrasp_showall)
             object_passive.set_pos(passive_pos)
             object_passive_pos = object_passive.get_pos().cpu().numpy()
-            
-            # Update GS buffer
-            scene.step()
-            gs_viewer_nonbackground.update()
-            gs_viewer_background.update()
             
         except:
             cprint(">>> AnyGrasp Failed. Reset.", "yellow")

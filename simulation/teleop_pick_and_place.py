@@ -1,5 +1,6 @@
 import os
 import argparse
+import time
 import torch
 import numpy as np
 import open3d as o3d
@@ -17,6 +18,13 @@ from simulation.auto_collect_pick_and_place import design_scene as design_pnp_sc
 from termcolor import cprint
 from tqdm import tqdm
 from pynput import keyboard
+try:
+    import rospy
+    from std_msgs.msg import Float64MultiArray, Bool
+    KEYBOARD_ROS_ENABLED = True
+except:
+    KEYBOARD_ROS_ENABLED = False
+    print("rospy not loaded. Keyboard teleop mode will be disabled.")
 
 def rotate_axis_quaternion(ori_axis):
     if ori_axis == 'x':
@@ -74,7 +82,7 @@ def design_scene(scene_config, show_viewer=True):
 
 def main(args):
     scene_config = EasyDict(yaml.safe_load(Path(args.cfg_path).open('r')))
-    
+
     from datetime import datetime
     now = datetime.now()
     milliseconds = now.microsecond // 1000
@@ -82,61 +90,74 @@ def main(args):
     task_name = scene_config.task_name
     process_output_dir = os.path.join(args.output_dir, task_name, timestamp)
     os.makedirs(process_output_dir, exist_ok=True)
-                             
+
+    if args.mode == "keyboard" and not KEYBOARD_ROS_ENABLED:
+        raise RuntimeError("rospy is not enabled! Install ROS first if using keyboard teleop mode.")
+
     cprint("*" * 40, "green")
     cprint("  Initializing Genesis", "green")
     cprint("*" * 40, "green")
-    
-    # Init Genesis
-    gs.init(backend=gs.gpu, logging_level = 'warning')
-    scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses, annotation_cams = design_scene(scene_config, show_viewer=True)
+
+    gs.init(backend=gs.gpu, logging_level='warning')
+    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses, annotation_cams = design_scene(scene_config, show_viewer=True)
     scene.build()
-    
-    # Assets
+
     robot = scene_dict["robot"]
     object_active = scene_dict["object_active"]
     object_passive = scene_dict["object_passive"]
-    
-    # Set phys params
+
     all_dof_ids = [robot.get_joint(name).dof_idx for name in JOINT_NAMES]
-    robot.set_dofs_kp(kp = BEST_PARAMS["kp"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kv(kv = BEST_PARAMS["kv"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kp(kp = [50000, 50000], dofs_idx_local=all_dof_ids[7:9])
-    robot.set_dofs_kv(kv = [10000, 10000], dofs_idx_local=all_dof_ids[7:9])
+    robot.set_dofs_kp(kp=BEST_PARAMS["kp"], dofs_idx_local=all_dof_ids[:7])
+    robot.set_dofs_kv(kv=BEST_PARAMS["kv"], dofs_idx_local=all_dof_ids[:7])
+    robot.set_dofs_kp(kp=[50000, 50000], dofs_idx_local=all_dof_ids[7:9])
+    robot.set_dofs_kv(kv=[10000, 10000], dofs_idx_local=all_dof_ids[7:9])
     robot.set_dofs_force_range([-100, -100], [100, 100], dofs_idx_local=all_dof_ids[7:9])
-    
+
     object_active.get_link("object").set_mass(0.1)
     object_active.get_link("object").set_friction(0.2)
 
     cprint("*" * 40, "green")
     cprint("  Initializing Controller", "green")
     cprint("*" * 40, "green")
-    
-    # Init Controller
-    controller = pick_and_place_controller(scene=scene, scene_config=scene_config, robot=robot, object_active=object_active, object_passive=object_passive, default_poses=default_poses, close_thres=scene_config.robot.close_thres, teleop=True)
-    
+
+    controller = pick_and_place_controller(
+        scene=scene,
+        scene_config=scene_config,
+        robot=robot,
+        object_active=object_active,
+        object_passive=object_passive,
+        default_poses=default_poses,
+        close_thres=scene_config.robot.close_thres,
+        teleop=args.mode,
+    )
+
+    dpos = np.zeros(3, dtype=np.float32)
     def reset_layout():
-        # Reset Layout
+        nonlocal dpos
+        dpos = np.zeros(3, dtype=np.float32)
         while True:
             controller.reset_scene()
             passive_pos = object_passive.get_pos().cpu().numpy()
             active_pos = object_active.get_pos().cpu().numpy()
             passive_aabb = object_passive.get_link("object").get_AABB()
             active_aabb = object_active.get_link("object").get_AABB()
-            
-            # object aabb must in the borders
-            if active_aabb[0, 0] > scene_config.object_active.pos_range.x[0] / 100 and \
-               active_aabb[0, 1] > scene_config.object_active.pos_range.y[0] / 100 and \
-               active_aabb[1, 0] < scene_config.object_active.pos_range.x[1] / 100 and \
-               active_aabb[1, 1] < scene_config.object_active.pos_range.y[1] / 100 :
+
+            if (
+                active_aabb[0, 0] > scene_config.object_active.pos_range.x[0] / 100
+                and active_aabb[0, 1] > scene_config.object_active.pos_range.y[0] / 100
+                and active_aabb[1, 0] < scene_config.object_active.pos_range.x[1] / 100
+                and active_aabb[1, 1] < scene_config.object_active.pos_range.y[1] / 100
+            ):
                 pass
             else:
                 cprint("active out of range", "yellow")
                 continue
-            if passive_aabb[0, 0] > scene_config.object_passive.pos_range.x[0] / 100 and \
-               passive_aabb[0, 1] > scene_config.object_passive.pos_range.y[0] / 100 and \
-               passive_aabb[1, 0] < scene_config.object_passive.pos_range.x[1] / 100 and \
-               passive_aabb[1, 1] < scene_config.object_passive.pos_range.y[1] / 100 :
+            if (
+                passive_aabb[0, 0] > scene_config.object_passive.pos_range.x[0] / 100
+                and passive_aabb[0, 1] > scene_config.object_passive.pos_range.y[0] / 100
+                and passive_aabb[1, 0] < scene_config.object_passive.pos_range.x[1] / 100
+                and passive_aabb[1, 1] < scene_config.object_passive.pos_range.y[1] / 100
+            ):
                 pass
             else:
                 cprint("passive out of range", "yellow")
@@ -148,30 +169,84 @@ def main(args):
             if x_overlap and y_overlap:
                 cprint("active-passive overlap box", "yellow")
                 continue
-            # the objects should not be too near
             if np.linalg.norm(passive_pos - active_pos) > scene_config.far_threshold:
                 cprint("active-passive too near", "yellow")
                 break
-            
+
+    if args.mode == "keyboard":
+        pos_step = 0.01
+        # sub_joint = rospy.Subscriber("/genesis/joint_states", Float64MultiArray, queue_size=1)
+        # sub_ee = rospy.Subscriber("/genesis/ee_states", Float64MultiArray, queue_size=1)
+        pub_joint_control = rospy.Publisher("/genesis/joint_control", Float64MultiArray, queue_size=1)
+        pub_gripper_control = rospy.Publisher("/genesis/gripper_control", Bool, queue_size=1)
+        default_joint_pos = controller.default_joint_angles[:7]
+        default_pos, default_quat = controller.franka_solver.compute_fk(default_joint_pos)
+        cprint("W/S: +/- X, A/D: +/- Y, R/F: +/- Z, Z: close gripper, X: open gripper", "cyan")
     def on_press(key):
-        pass
-        # print(f"Key pressed: {key}")
+        if args.mode != "keyboard":
+            return
+        nonlocal dpos, default_pos, default_quat, default_joint_pos
+        try:
+            c = key.char
+        except AttributeError:
+            return
+        
+
+        gripper_open = controller.current_gripper_control
+        if c == "w":
+            dpos[0] += pos_step
+        elif c == "s":
+            dpos[0] -= pos_step
+        elif c == "a":
+            dpos[1] += pos_step
+        elif c == "d":
+            dpos[1] -= pos_step
+        elif c == "r":
+            dpos[2] += pos_step
+        elif c == "f":
+            dpos[2] -= pos_step
+        elif c == "z":
+            gripper_open = False
+        elif c == "x":
+            gripper_open = True
+        else:
+            return
+        target_pos = default_pos + dpos
+        current_joint_angles = controller.franka.get_dofs_position().cpu().numpy()[:7]
+        result = controller.franka_solver.solve_ik_by_motion_gen(
+            curr_joint_state=current_joint_angles,
+            target_trans=target_pos,
+            target_quat=default_quat,
+        )
+        if not result:
+            return
+        pub_joint_control.publish(data=result[-1])
+        if gripper_open:
+            pub_gripper_control.publish(data=True)
+        else:
+            pub_gripper_control.publish(data=False)
+
+    cprint("1: reset & recollect, 2: start record, 3: end record, 4: save & reset", "cyan")
 
     def on_release(key):
         nonlocal process_output_dir
         nonlocal controller
         nonlocal reset_layout
-        if key.char == "1":
-            print('recollect !!!')
+        try:
+            c = key.char
+        except AttributeError:
+            return
+        if c == "1":
+            print("recollect !!!")
             controller.clean_traj()
             reset_layout()
-        elif key.char == "2":
-            print('start recording !!!')
+        elif c == "2":
+            print("start recording !!!")
             controller.start_record()
-        elif key.char == "3":
+        elif c == "3":
             print("end recording !!!")
             controller.end_record()
-        elif key.char == "4":
+        elif c == "4":
             print("save record ...")
             controller.save_traj(process_output_dir)
             reset_layout()
@@ -194,5 +269,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="datasets/records")
     parser.add_argument("--cfg_path", type=str, default="simulation/configs/banana_plate.yaml")
+    parser.add_argument("--mode", type=str, default="keyboard", choices=["pico", "keyboard"])
     args = parser.parse_args()
     main(args)

@@ -120,7 +120,6 @@ class franka_controller:
         current_ee_pose_list = current_ee_pose.flatten().tolist()
         current_ee_msg = Float64MultiArray(data=current_ee_pose_list)
         self.pub_ee.publish(current_ee_msg)
-        # print(current_ee_pose_list)
 
     def move_to_goal(self, pos, quat, gripper_open=True, quick=False):
         """
@@ -205,7 +204,6 @@ class franka_controller:
         if self.teleop or self.evaluation:
             self.publish_states()
         self.scene.step()
-        print(self.current_control)
         if self.record_started:
             self.record_step()
 
@@ -281,7 +279,8 @@ class pick_and_place_controller(franka_controller):
 
         self.franka.set_dofs_position(self.default_joint_angles)
         self.franka.control_dofs_position(self.default_joint_angles)
-        
+        self.current_control = self.default_joint_angles
+        self.current_gripper_control = self.default_gripper_state
         active_x_min = self.scene_config.object_active.pos_range.x[0] / 100
         active_x_max = self.scene_config.object_active.pos_range.x[1] / 100
         active_y_min = self.scene_config.object_active.pos_range.y[0] / 100

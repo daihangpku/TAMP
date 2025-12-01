@@ -20,7 +20,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
 
-def render_scene(scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
+def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
     if data is not None:
         robot = scene_dict["robot"]
         object_active = scene_dict["object_active"]
@@ -34,6 +34,7 @@ def render_scene(scene_dict, data, cam, args_cli=None, znear=0.1, render_types=[
         object_passive.set_quat(passive_quat)
         object_active.set_pos(active_pos)
         object_active.set_quat(active_quat)
+        scene.step()
 
     rgb_image = None
     depth_image = None
@@ -214,7 +215,7 @@ if __name__ == "__main__":
             for h5_file_idx in tqdm(h5_file_idxs, desc="frame"):
                 h5_path = os.path.join(demo_dir, f"{h5_file_idx}.h5")
                 data = read_h5_file(h5_path)
-                rgb_image, depth_image = render_scene(scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
+                rgb_image, depth_image = render_scene(scene, scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
                 if args_cli.debug:
                     if "rgb" in args_cli.render_types and "depth" in args_cli.render_types:
                         visualize_rgbd(rgb_image, depth_image, camera_intr)
