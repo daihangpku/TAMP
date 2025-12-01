@@ -7,6 +7,12 @@ sudo apt install ros-noetic-autolabor
 roscore
 ```
 ```bash
+# sudo apt install git-lfs 
+git clone https://github.com/daihangpku/TAMP.git
+cd TAMP 
+git submodule init --update --recursive
+# git lfs install
+
 conda create -n genesis python=3.10 -y
 conda activate genesis
 pip install -r requirements.txt
