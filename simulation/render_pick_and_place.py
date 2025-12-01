@@ -15,10 +15,8 @@ from pathlib import Path
 from easydict import EasyDict
 import open3d as o3d
 os.environ["PYOPENGL_PLATFORM"] = "egl"
-import time
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
+from simulation.auto_collect_pick_and_place import design_pnp_scene
 
 def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
     if data is not None:

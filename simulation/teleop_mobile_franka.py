@@ -12,9 +12,9 @@ import genesis as gs
 import yaml
 from pathlib import Path
 from easydict import EasyDict
-from simulation.utils.constants import BEST_PARAMS, JOINT_NAMES
+from simulation.utils.constants import BEST_PARAMS, MOBILE_DEFAULT_CFG
 from simulation.utils.auto_collect.franka_genesis_controller import pick_and_place_controller
-from simulation.auto_collect_pick_and_place import design_scene as design_pnp_scene
+from simulation.auto_collect_pick_and_place import design_pnp_scene, get_object_bbox_and_height
 from termcolor import cprint
 from tqdm import tqdm
 from pynput import keyboard
@@ -26,39 +26,9 @@ except:
     KEYBOARD_ROS_ENABLED = False
     print("rospy not loaded. Keyboard teleop mode will be disabled.")
 
-def rotate_axis_quaternion(ori_axis):
-    if ori_axis == 'x':
-        return (np.sqrt(2) / 2, 0, -np.sqrt(2) / 2, 0)
-    elif ori_axis == 'y':
-        return (np.sqrt(2) / 2, np.sqrt(2) / 2, 0, 0)
-    elif ori_axis == 'z':
-        return (1, 0, 0, 0)
-    elif ori_axis == "-x":
-        return (np.sqrt(2) / 2, 0, np.sqrt(2) / 2, 0)
-    elif ori_axis == "-y":
-        return (np.sqrt(2) / 2, -np.sqrt(2) / 2, 0, 0)
-    elif ori_axis == "-z":
-        return (0, 1, 0, 0)
-    else:
-        return (1, 0, 0, 0)
-
-def get_object_bbox_and_height(object_ply, ori_axis):
-    ply_o3d = o3d.io.read_triangle_mesh(object_ply)
-    bbox = ply_o3d.get_axis_aligned_bounding_box()
-    bbox_minbound = bbox.get_min_bound()
-    bbox_maxbound = bbox.get_max_bound()
-    if "x" in ori_axis:
-        height = (bbox_maxbound[0] - bbox_minbound[0])
-    elif "y" in ori_axis:
-        height = (bbox_maxbound[1] - bbox_minbound[1])
-    elif "z" in ori_axis:
-        height = (bbox_maxbound[2] - bbox_minbound[2])
-    else:
-        raise NotImplementedError(f"unknown axis {ori_axis}")
-    return bbox, height
 
 def design_scene(scene_config, show_viewer=True):
-    scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses = design_pnp_scene(scene_config, show_viewer=show_viewer)
+    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_pnp_scene(scene_config, show_viewer=show_viewer)
     left_cam = scene.add_camera(
         res    = (1280, 720),
         pos    = (0.62, -0.5, 0.5),
@@ -73,12 +43,9 @@ def design_scene(scene_config, show_viewer=True):
         fov    = 30,
         GUI    = True,
     )
-
-    annotation_cams = {
-        "left_cam": left_cam,
-        "front_cam": front_cam,
-    }
-    return scene, scene_config, scene_dict, scene_asset_path_dict, grasp_cam, default_poses, annotation_cams
+    cams["anno_cam_1"] = left_cam
+    cams["anno_cam_2"] = front_cam
+    return scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses
 
 def main(args):
     scene_config = EasyDict(yaml.safe_load(Path(args.cfg_path).open('r')))
@@ -99,19 +66,21 @@ def main(args):
     cprint("*" * 40, "green")
 
     gs.init(backend=gs.gpu, logging_level='warning')
-    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses, annotation_cams = design_scene(scene_config, show_viewer=True)
+    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_scene(scene_config, show_viewer=True)
     scene.build()
 
     robot = scene_dict["robot"]
     object_active = scene_dict["object_active"]
     object_passive = scene_dict["object_passive"]
-
-    all_dof_ids = [robot.get_joint(name).dof_idx for name in JOINT_NAMES]
-    robot.set_dofs_kp(kp=BEST_PARAMS["kp"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kv(kv=BEST_PARAMS["kv"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kp(kp=[50000, 50000], dofs_idx_local=all_dof_ids[7:9])
-    robot.set_dofs_kv(kv=[10000, 10000], dofs_idx_local=all_dof_ids[7:9])
-    robot.set_dofs_force_range([-100, -100], [100, 100], dofs_idx_local=all_dof_ids[7:9])
+    joint_names = MOBILE_DEFAULT_CFG.keys()
+    all_dof_ids = [robot.get_joint(name).dof_idx for name in joint_names]
+    import ipdb
+    ipdb.set_trace()
+    robot.set_dofs_kp(kp=BEST_PARAMS["kp"], dofs_idx_local=all_dof_ids[3:10])
+    robot.set_dofs_kv(kv=BEST_PARAMS["kv"], dofs_idx_local=all_dof_ids[3:10])
+    robot.set_dofs_kp(kp=[50000, 50000], dofs_idx_local=all_dof_ids[10:12])
+    robot.set_dofs_kv(kv=[10000, 10000], dofs_idx_local=all_dof_ids[10:12])
+    robot.set_dofs_force_range([-100, -100], [100, 100], dofs_idx_local=all_dof_ids[10:12])
 
     object_active.get_link("object").set_mass(0.1)
     object_active.get_link("object").set_friction(0.2)
@@ -259,8 +228,9 @@ def main(args):
         if not listener.is_alive():
             listener = keyboard.Listener(on_press=on_press, on_release=on_release)
             listener.start()
-        for cam in annotation_cams.values():
-            cam.render()
+        for cam_key in cams.keys():
+            if cam_key.startswith("anno"):
+                cams[cam_key].render()
         controller.step()
         pbar.update()
 
@@ -268,7 +238,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="datasets/records")
-    parser.add_argument("--cfg_path", type=str, default="simulation/configs/banana_plate.yaml")
+    parser.add_argument("--cfg_path", type=str, default="simulation/configs/banana_plate_mobile.yaml")
     parser.add_argument("--mode", type=str, default="keyboard", choices=["pico", "keyboard"])
     args = parser.parse_args()
     main(args)

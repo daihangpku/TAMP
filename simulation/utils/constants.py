@@ -20,7 +20,20 @@ XML_DEFAULT_CFG = {
     "finger_joint1": 0.04,
     "finger_joint2": 0.04,
 }
-
+MOBILE_DEFAULT_CFG = {
+    "base_x": 0.0,
+    "base_y": 0.0,
+    "base_z": 0.0,
+    "panda_joint1": 0.03995192,
+    "panda_joint2": -0.00592799,#
+    "panda_joint3": -0.18448183,
+    "panda_joint4": -2.21950033,
+    "panda_joint5": -0.00492253,
+    "panda_joint6": 2.22304146,
+    "panda_joint7": 0.69084185,
+    "panda_finger_joint1": 0.04,
+    "panda_finger_joint2": 0.04,
+}
 BEST_PARAMS = {
     "kp": [
         2424.657254246728,
@@ -72,5 +85,4 @@ JOINT_NAMES = [
     'finger_joint1',
     'finger_joint2',
 ]
-
 DEFAULT_JOINT_ANGLES = [XML_DEFAULT_CFG[joint_name] for joint_name in JOINT_NAMES]

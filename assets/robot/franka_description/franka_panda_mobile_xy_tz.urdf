@@ -11,7 +11,7 @@
     <parent link="base_link"/>
     <child link="base_link_x"/>
     <axis xyz="1 0 0"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-5.0" upper="5.0" velocity="1.0"/>
   </joint>
 
@@ -20,7 +20,7 @@
     <parent link="base_link_x"/>
     <child link="base_link_y"/>
     <axis xyz="0 1 0"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-5.0" upper="5.0" velocity="1.0"/>
   </joint>
 
@@ -29,7 +29,7 @@
     <parent link="base_link_y"/>
     <child link="base_link_z"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-6.0" upper="6.0" velocity="1.50"/>
   </joint>
 
@@ -76,7 +76,7 @@
     <parent link="panda_link0"/>
     <child link="panda_link1"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <!--limit effort="87" lower="-2.8973" upper="2.8973" velocity="2.1750"/-->
     <limit effort="87" lower="-2.8973" upper="2.8973" velocity="2.1750"/>
   </joint>
@@ -98,7 +98,7 @@
     <parent link="panda_link1"/>
     <child link="panda_link2"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-1.7628" upper="1.7628" velocity="2.1750"/>
   </joint>
   <link name="panda_link3">
@@ -119,7 +119,7 @@
     <parent link="panda_link2"/>
     <child link="panda_link3"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-2.8973" upper="2.8973" velocity="2.1750"/>
   </joint>
   <link name="panda_link4">
@@ -140,7 +140,7 @@
     <parent link="panda_link3"/>
     <child link="panda_link4"/>
     <axis xyz="0 0 1"/>    
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="87" lower="-3.0718" upper="-0.0698" velocity="2.1750"/>
     <!-- something is weird with this joint limit config
     <dynamics damping="10.0"/>
@@ -164,7 +164,7 @@
     <parent link="panda_link4"/>
     <child link="panda_link5"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.6100"/>
   </joint>
   <link name="panda_link6">
@@ -185,7 +185,7 @@
     <parent link="panda_link5"/>
     <child link="panda_link6"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="12" lower="0.5" upper="3.7525" velocity="2.6100"/>
     <!-- <dynamics damping="10.0"/>
     <limit effort="12" lower="-0.0873" upper="3.0" velocity="2.6100"/> -->
@@ -208,7 +208,7 @@
     <parent link="panda_link6"/>
     <child link="panda_link7"/>
     <axis xyz="0 0 1"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.6100"/>
   </joint>
   <link name="panda_link8"/>
@@ -314,7 +314,7 @@
     <child link="panda_leftfinger"/>
     <origin rpy="0 0 0" xyz="0 0 0.0584"/>
     <axis xyz="0 1 0"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="20" lower="0.0" upper="0.04" velocity="0.2"/>
   </joint>
   <joint name="panda_finger_joint2" type="prismatic">
@@ -322,10 +322,8 @@
     <child link="panda_rightfinger"/>
     <origin rpy="0 0 0" xyz="0 0 0.0584"/>
     <axis xyz="0 -1 0"/>
-    <dynamics damping="10.0"/>
+    <dynamics damping="10.0" friction="0.0"/>
     <limit effort="20" lower="0.0" upper="0.04" velocity="0.2"/>
   </joint>
 
 </robot>
-
-
