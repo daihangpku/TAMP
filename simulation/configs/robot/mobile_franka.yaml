@@ -1,0 +1,47 @@
+asset: assets/robot/franka_description/franka_panda_mobile_xy_tz.urdf
+robot_to_table_height: 1.58 # cm
+close_thres: 1.0 #cm
+joint_names:
+    - base_x
+    - base_y
+    - base_z
+    - panda_joint1
+    - panda_joint2
+    - panda_joint3
+    - panda_joint4
+    - panda_joint5
+    - panda_joint6
+    - panda_joint7
+    - panda_finger_joint1
+    - panda_finger_joint2
+ee_link: panda_hand
+default_joint_positions: [0.0, 0.0, 0.0, 0.03995192, -0.00592799, -0.18448183, -2.21950033, -0.00492253, 2.22304146, 0.69084185, 0.04, 0.04]
+physic_params:
+    kp: [
+        5000,
+        5000,
+        5000,
+        2424.657254246728,
+        16976.159595959594,
+        12101.932123237386,
+        10031.517126148701,
+        1238.0951824004453,
+        69.25030758714965,
+        396.801903749272,
+        50000,
+        50000
+    ]
+    kv: [
+        1000,
+        1000,
+        1000,
+        2003.6817042606517,
+        3271.0,
+        1537.591478696742,
+        1456.187969924812,
+        460.44862155388466,
+        13.506265664160395,
+        80.49874686716791,
+        10000,
+        10000
+    ]

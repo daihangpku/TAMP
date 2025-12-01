@@ -16,7 +16,7 @@ from easydict import EasyDict
 import open3d as o3d
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from simulation.auto_collect_pick_and_place import design_pnp_scene
+from simulation.utils.scene_utils import design_pnp_scene
 
 def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
     if data is not None:
@@ -180,7 +180,8 @@ def visualize_rgbd(rgb, depth, camera_intr, depth_scale=1000.0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--record_dir", type=str, default=None)
-    parser.add_argument('--cfg_path', type=str, default=None)
+    parser.add_argument('--scene_cfg_path', type=str, default=None)
+    parser.add_argument('--robot_cfg_path', type=str, default=None)
     parser.add_argument("--mod", type=int, default=5)
     parser.add_argument("--debug", action="store_true", default=False)
     parser.add_argument("--demo_min_idx", type=int, default=0)
@@ -189,10 +190,10 @@ if __name__ == "__main__":
     parser.add_argument('--render_types', default="rgb,depth", type=str, help='render types, comma separated, options: rgb, depth')
     args_cli = parser.parse_args()
     args_cli.render_types = args_cli.render_types.split(',')
-    scene_config = EasyDict(yaml.safe_load(Path(args_cli.cfg_path).open('r')))
-    
+    scene_config = yaml.safe_load(Path(args_cli.scene_cfg_path).open('r'))
+    robot_config = yaml.safe_load(Path(args_cli.robot_cfg_path).open('r'))
     gs.init(backend=gs.gpu, logging_level = 'error')
-    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_pnp_scene(scene_config, show_viewer=False)
+    scene, scene_dict, cams, default_poses = design_pnp_scene(scene_config, robot_config, show_viewer=False)
     scene.build()
     desk_cam = cams["desk_cam"]
     intr_mat = np.array(desk_cam.intrinsics)

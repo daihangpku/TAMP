@@ -1,10 +1,6 @@
 task_name: banana_plate
 background:
   asset: outputs/background-20250814_232642_441/splitted_point_cloud/object.urdf
-robot:
-  asset: assets/robot/franka_description/franka_panda_mobile_xy_tz.urdf
-  robot_to_table_height: 1.58 # cm
-  close_thres: 1.0 #cm
 object_active:
   asset: outputs/banana-20250813_150647_221/object.urdf
   mesh_asset: outputs/banana-20250813_150647_221/mesh_w_vertex_color_abs.ply
@@ -20,6 +16,14 @@ object_active:
   skill_1_height: 6.2 # cm
   motion_2_height: 20 # cm
   skill_2_height: 12 # cm
+  physic_params:
+    mass: 1.0
+    friction: 0.2
+    com_shift: [0, 0, 0]
+    friction_ratio: 4.54689731331836
+    mass_shift: -0.2414437050891564
+    com_shift: [0.017808304444272453, 0.030200377174884798, -0.009719295200933715]
+    
 object_passive:
   asset: outputs/pink-20250627_184711_116/object.urdf
   mesh_asset: outputs/pink-20250627_184711_116/mesh_w_vertex_color_abs.ply

@@ -2,11 +2,10 @@ import sys
 import numpy as np
 import os
 sys.path.insert(0, os.getcwd())
-from simulation.utils.auto_collect.ik_solver import FrankaSolver
+from simulation.controller.ik_solver import FrankaSolver
 import h5py
 from tqdm import tqdm
-from simulation.utils.auto_collect.utils import rotate_quaternion_around_world_z_axis
-from simulation.utils.constants import DEFAULT_JOINT_ANGLES, JOINT_NAMES
+from simulation.controller.utils import rotate_quaternion_around_world_z_axis
 import torch
 try:
     import rospy
@@ -17,7 +16,7 @@ except:
     print("rospy not loaded. Teleop mode will be disabled.")
 
 class franka_controller:
-    def __init__(self, scene, robot, close_thres, teleop=None, evaluation=False, default_gripper_state=False, default_joint_angles=DEFAULT_JOINT_ANGLES):
+    def __init__(self, scene, scene_dict,scene_config, robot_config, close_thres, teleop=None, evaluation=False):
         """
         Initialize the Franka controller with the specified IK type and simulation settings.
 
@@ -26,8 +25,13 @@ class franka_controller:
             ik_sim (bool): Whether to use simulation mode.
             simulator (str): The simulator to use, e.g., "genesis".
         """
+        self.scene_config = scene_config
+        self.robot_config = robot_config
         self.scene = scene
-        self.franka = robot
+        self.franka = scene_dict["robot"]
+        self.ee_link = robot_config["ee_link"]
+        self.default_ee_quat = self.franka.get_link(self.ee_link).get_quat().cpu().numpy()
+        self.default_ee_pos = self.franka.get_link(self.ee_link).get_pos().cpu().numpy()
         if evaluation:
             # ik in policy
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
@@ -39,28 +43,35 @@ class franka_controller:
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=True, simulator="genesis", no_solver=False)
         self.real_franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
         self.record_started = False
-        self.default_joint_angles = default_joint_angles
+        self.default_joint_positions = robot_config["default_joint_positions"]
         self.close_state = [close_thres / 100, close_thres / 100]
         self.open_state = [0.04, 0.04]
-        self.current_control = np.array(self.default_joint_angles[:7])
-        self.current_gripper_control = default_gripper_state
-        self.default_gripper_state = default_gripper_state
+        self.current_control = np.array(self.default_joint_positions[:-2])
+        self.default_gripper_state = False
+        self.current_gripper_control = False
         self.teleop = teleop
         self.evaluation = evaluation
-        self.all_dof_ids = [robot.get_joint(name).dof_idx for name in JOINT_NAMES]
+        self.all_dof_ids = [self.franka.get_joint(name).dof_idx for name in self.robot_config["joint_names"]]
         if self.default_gripper_state:
             self.franka.set_dofs_position(
                 self.close_state,
-                self.all_dof_ids[7:9], 
+                self.all_dof_ids[-2:], 
             )
-            self.default_joint_angles[7:9] = self.close_state
+            self.default_joint_positions[-2:] = self.close_state
         else:
             self.franka.set_dofs_position(
                 self.open_state,
-                self.all_dof_ids[7:9], 
+                self.all_dof_ids[-2:], 
             )
-            self.default_joint_angles[7:9] = self.open_state
-
+            self.default_joint_positions[-2:] = self.open_state
+        self.franka.set_dofs_position(
+                self.default_joint_positions[:-2],
+                self.all_dof_ids[:-2], 
+            )
+        self.franka.control_dofs_position(
+            self.default_joint_positions,
+            self.all_dof_ids,
+        )
         if teleop or evaluation:
             if ROSPY_ENABLED:
                 self.init_teleop()
@@ -71,7 +82,7 @@ class franka_controller:
         self.current_control = np.array(msg.data)
         self.franka.control_dofs_position(
             np.array(msg.data),
-            self.all_dof_ids[:7],
+            self.all_dof_ids[:-2],
         )
 
     def _callback_gripper_control(self, msg):
@@ -80,13 +91,13 @@ class franka_controller:
                 self.current_gripper_control = True
                 self.franka.control_dofs_position(
                     self.close_state,
-                    self.all_dof_ids[7:9], 
+                    self.all_dof_ids[-2:], 
                 )
             else:
                 self.current_gripper_control = False
                 self.franka.control_dofs_position(
                     self.open_state,
-                    self.all_dof_ids[7:9], 
+                    self.all_dof_ids[-2:], 
                 )
             
     def init_teleop(self):
@@ -130,7 +141,7 @@ class franka_controller:
             quat (list or np.ndarray): The target orientation as a quaternion.
         """
         joint_pos = self.franka.get_dofs_position().cpu().numpy()
-        current_joint_angles = joint_pos[:7]  # 当前关节角度
+        current_joint_angles = joint_pos[:-2]  # 当前关节角度
         result = self.franka_solver.solve_ik_by_motion_gen(
             curr_joint_state=current_joint_angles, 
             target_trans=pos,
@@ -163,7 +174,7 @@ class franka_controller:
         """
         joint_pos = self.franka.get_dofs_position().cpu().numpy()
         current_joint_angles = joint_pos
-        current_joint_angles[7:] = self.close_state
+        current_joint_angles[-2:] = self.close_state
         self.current_gripper_control = True
         self.franka.control_dofs_position(current_joint_angles)
         for i in range(wait_steps):
@@ -176,7 +187,7 @@ class franka_controller:
         """
         joint_pos = self.franka.get_dofs_position().cpu().numpy()
         current_joint_angles = joint_pos
-        current_joint_angles[7:] = self.open_state
+        current_joint_angles[-2:] = self.open_state
         self.current_gripper_control = False
         self.franka.control_dofs_position(current_joint_angles)
         for i in range(wait_steps):
@@ -187,9 +198,9 @@ class franka_controller:
         """
         Reset the Franka robot to its initial state.
         """
-        self.current_control = np.array(self.default_joint_angles[:7])
+        self.current_control = np.array(self.default_joint_positions[:-2])
         self.current_gripper_control = self.default_gripper_state
-        self.franka.set_dofs_position(self.default_joint_angles)
+        self.franka.set_dofs_position(self.default_joint_positions)
         self.scene.step()
         
     def step(self):
@@ -199,7 +210,7 @@ class franka_controller:
         if self.default_gripper_state:
             self.franka.control_dofs_position(
                 self.close_state,
-                self.all_dof_ids[7:9], 
+                self.all_dof_ids[-2:], 
             )
         if self.teleop or self.evaluation:
             self.publish_states()
@@ -214,9 +225,7 @@ class pick_and_place_controller(franka_controller):
     """Controller for pick and place operations using the Franka robot.
     Inherits from the `franka_controller` class.
     """
-    def __init__(self, scene, scene_config, robot, object_active, object_passive, default_poses, close_thres=1, teleop=False, evaluation=False,
-                 physics_params=[1, 0, 0, 0, 0],
-                 default_joint_angles=DEFAULT_JOINT_ANGLES):
+    def __init__(self, scene, scene_dict, scene_config, robot_config, default_poses, close_thres=1, teleop=False, evaluation=False):
         """
         Initialize the pick and place controller.
 
@@ -226,25 +235,16 @@ class pick_and_place_controller(franka_controller):
             ik_type (str): Type of IK solver to use. Options: "ik_solver" or "motion_gen".
             simulator (str): The simulator to use, e.g., "genesis".
         """
-        super().__init__(scene, robot, close_thres, teleop=teleop, evaluation=evaluation, default_gripper_state=False, default_joint_angles=default_joint_angles)
-        self.scene_config = scene_config
-        self.object_active = object_active
-        self.object_passive = object_passive
+        super().__init__(scene, scene_dict, scene_config, robot_config, close_thres, teleop=teleop, evaluation=evaluation)
+        self.object_active = scene_dict["object_active"]
+        self.object_passive = scene_dict["object_passive"]
         self.default_poses = default_poses
         
-        self.franka.set_dofs_position(self.default_joint_angles)
+        
         self.scene.step()
-        self.default_hand_quat = self.franka.get_link("hand").get_quat().cpu().numpy()
-        self.default_hand_pos = self.franka.get_link("hand").get_pos().cpu().numpy()
         self.record_started = False
         self.timestamp = 0
         self.record = []
-        self.physics_params = {
-            "friction_ratio": physics_params[0],
-            "mass_shift": physics_params[1],
-            "com_shift": physics_params[2:5],
-        }        
-        # record
         self.traj_cnt = 0
         
     def reset_scene(self):
@@ -277,23 +277,23 @@ class pick_and_place_controller(franka_controller):
             )
             return rigid_entity
 
-        self.franka.set_dofs_position(self.default_joint_angles)
-        self.franka.control_dofs_position(self.default_joint_angles)
-        self.current_control = self.default_joint_angles
+        self.franka.set_dofs_position(self.default_joint_positions)
+        self.franka.control_dofs_position(self.default_joint_positions)
+        self.current_control = self.default_joint_positions
         self.current_gripper_control = self.default_gripper_state
-        active_x_min = self.scene_config.object_active.pos_range.x[0] / 100
-        active_x_max = self.scene_config.object_active.pos_range.x[1] / 100
-        active_y_min = self.scene_config.object_active.pos_range.y[0] / 100
-        active_y_max = self.scene_config.object_active.pos_range.y[1] / 100
+        active_x_min = self.scene_config["object_active"]["pos_range"]["x"][0] / 100
+        active_x_max = self.scene_config["object_active"]["pos_range"]["x"][1] / 100
+        active_y_min = self.scene_config["object_active"]["pos_range"]["y"][0] / 100
+        active_y_max = self.scene_config["object_active"]["pos_range"]["y"][1] / 100
         rand_x = np.random.rand() * (active_x_max - active_x_min) + active_x_min
         rand_y = np.random.rand() * (active_y_max - active_y_min) + active_y_min
         fixed_z = self.default_poses["active_pos"][2]
         self.object_active.set_pos(np.array([rand_x, rand_y, fixed_z]))
 
-        passive_x_min = self.scene_config.object_passive.pos_range.x[0] / 100
-        passive_x_max = self.scene_config.object_passive.pos_range.x[1] / 100
-        passive_y_min = self.scene_config.object_passive.pos_range.y[0] / 100
-        passive_y_max = self.scene_config.object_passive.pos_range.y[1] / 100
+        passive_x_min = self.scene_config["object_passive"]["pos_range"]["x"][0] / 100
+        passive_x_max = self.scene_config["object_passive"]["pos_range"]["x"][1] / 100
+        passive_y_min = self.scene_config["object_passive"]["pos_range"]["y"][0] / 100
+        passive_y_max = self.scene_config["object_passive"]["pos_range"]["y"][1] / 100
         rand_x = np.random.rand() * (passive_x_max - passive_x_min) + passive_x_min
         rand_y = np.random.rand() * (passive_y_max - passive_y_min) + passive_y_min
         fixed_z = self.default_poses["passive_pos"][2]
@@ -317,12 +317,12 @@ class pick_and_place_controller(franka_controller):
         self.object_passive.set_quat(rand_quat)
         
         # set physics
-        set_friction_ratio(self.object_active, torch.tensor([self.physics_params["friction_ratio"]]).to("cuda"), link_indices = [0],)
-        self.object_active.set_mass_shift(torch.tensor([self.physics_params["mass_shift"]]).to("cuda"), link_indices = [0])
-        self.object_active.set_COM_shift(
-            com_shift=torch.tensor(self.physics_params["com_shift"]).to("cuda").unsqueeze(0),
-            link_indices = [0],
-        )
+        # set_friction_ratio(self.object_active, torch.tensor([self.physics_params["friction_ratio"]]).to("cuda"), link_indices = [0],)
+        # self.object_active.set_mass_shift(torch.tensor([self.physics_params["mass_shift"]]).to("cuda"), link_indices = [0])
+        # self.object_active.set_COM_shift(
+        #     com_shift=torch.tensor(self.physics_params["com_shift"]).to("cuda").unsqueeze(0),
+        #     link_indices = [0],
+        # )
         if not self.teleop and not self.evaluation:
             self.scene.step()
     
@@ -388,42 +388,3 @@ class pick_and_place_controller(franka_controller):
 
     def end_record(self):
         self.record_started = False
-
-stacking_controller = pick_and_place_controller
-
-class push_controller(pick_and_place_controller):
-    """Controller for push operations using the Franka robot.
-    Inherits from the `franka_controller` class.
-    """
-    def __init__(self, scene, scene_config, robot, object_active, object_passive, default_poses, close_thres=1, teleop=False, evaluation=False,
-                 physics_params=[1, 0, 0, 0, 0], 
-                 default_joint_angles=[-0.481852,0.85785228,-0.19883735,-1.72379066,1.09372448,1.15488531,-1.89647886,0,0]):
-        """
-        Initialize the push controller.
-
-        Args:
-            scene: The simulation scene.
-            robot: The Franka robot instance.
-            ik_type (str): Type of IK solver to use. Options: "ik_solver" or "motion_gen".
-            simulator (str): The simulator to use, e.g., "genesis".
-        """
-        super().__init__(scene, robot, close_thres, teleop=teleop, evaluation=evaluation, default_gripper_state=True, default_joint_angles=default_joint_angles)
-        self.scene_config = scene_config
-        self.object_active = object_active
-        self.object_passive = object_passive
-        self.default_poses = default_poses
-        
-        self.franka.set_dofs_position(self.default_joint_angles)
-        self.scene.step()
-        self.default_hand_quat = self.franka.get_link("hand").get_quat().cpu().numpy()
-        self.default_hand_pos = self.franka.get_link("hand").get_pos().cpu().numpy()
-        self.record_started = False
-        self.timestamp = 0
-        self.record = []
-        self.physics_params = {
-            "friction_ratio": physics_params[0],
-            "mass_shift": physics_params[1],
-            "com_shift": physics_params[2:5],
-        }        
-        # record
-        self.traj_cnt = 0
