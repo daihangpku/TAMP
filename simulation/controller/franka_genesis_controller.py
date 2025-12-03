@@ -2,11 +2,12 @@ import sys
 import numpy as np
 import os
 sys.path.insert(0, os.getcwd())
-from simulation.controller.ik_solver import FrankaSolver
+from simulation.controller.ik_solver import FrankaSolver, MobileFrankaSolver
 import h5py
 from tqdm import tqdm
 from simulation.controller.utils import rotate_quaternion_around_world_z_axis
 import torch
+from termcolor import cprint
 try:
     import rospy
     from std_msgs.msg import Float64MultiArray, Bool
@@ -16,7 +17,7 @@ except:
     print("rospy not loaded. Teleop mode will be disabled.")
 
 class franka_controller:
-    def __init__(self, scene, scene_dict,scene_config, robot_config, close_thres, teleop=None, evaluation=False):
+    def __init__(self, scene, scene_dict, scene_config, robot_config, close_thres, teleop=None, evaluation=False):
         """
         Initialize the Franka controller with the specified IK type and simulation settings.
 
@@ -32,16 +33,13 @@ class franka_controller:
         self.ee_link = robot_config["ee_link"]
         self.default_ee_quat = self.franka.get_link(self.ee_link).get_quat().cpu().numpy()
         self.default_ee_pos = self.franka.get_link(self.ee_link).get_pos().cpu().numpy()
-        if evaluation:
-            # ik in policy
-            self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
-        elif teleop=="pico" or teleop==True:
-            # ik in teleop
-            self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=True, simulator="genesis", no_solver=True)
+        if robot_config["name"] == "mobile_franka":
+            self.franka_solver = MobileFrankaSolver(ik_type="motion_gen", no_solver=False)
+            cprint("mobile franka solver loaded", "green")
         else:
-            # ik in simulator
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=True, simulator="genesis", no_solver=False)
-        self.real_franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
+            cprint("franka solver loaded", "green")
+        # self.real_franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=False, simulator=None, no_solver=True)
         self.record_started = False
         self.default_joint_positions = robot_config["default_joint_positions"]
         self.close_state = [close_thres / 100, close_thres / 100]
@@ -333,9 +331,9 @@ class pick_and_place_controller(franka_controller):
         object_passive_quat_state = self.object_passive.get_quat()
         
         joint_pos = self.franka.get_dofs_position().cpu().numpy()
-        trans, rot_quat = self.real_franka_solver.compute_fk(joint_pos)
+        trans, rot_quat = self.franka_solver.compute_fk(joint_pos)
         current_ee_pose = np.concatenate([trans, rot_quat])
-        current_ee_control = np.concatenate(self.real_franka_solver.compute_fk(self.current_control))
+        current_ee_control = np.concatenate(self.franka_solver.compute_fk(self.current_control))
         states = {
             "timestamp": np.array([self.timestamp]),
             "joint_states": joint_pos, 

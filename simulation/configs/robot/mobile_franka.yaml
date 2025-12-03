@@ -1,4 +1,6 @@
 asset: assets/robot/franka_description/franka_panda_mobile_xy_tz.urdf
+# asset: xml/franka_emika_panda/panda_free_base.xml
+name: mobile_franka
 robot_to_table_height: 1.58 # cm
 close_thres: 1.0 #cm
 joint_names:
