@@ -1,4 +1,6 @@
 datasets/
 outputs/
 **/__pycache__
+outputs.zip
+assets/objects/
 policy/twinaligner-policy-2d
