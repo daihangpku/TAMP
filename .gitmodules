@@ -1,3 +1,6 @@
 [submodule "simulation/curobo"]
 	path = simulation/curobo
 	url = https://github.com/NVlabs/curobo.git
+[submodule "policy/diffusion_policy_tamp"]
+	path = policy/diffusion_policy_tamp
+	url = https://github.com/JinkaiC/diffusion_policy_tamp.git

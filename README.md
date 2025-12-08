@@ -32,6 +32,7 @@ rosrun TAMP sim_control_node.py
 # Usage
 ## teleoperate using keyboard
 ```bash
+export SETUPTOOLS_USE_DISTUTILS=stdlib
 python simulation/teleop_pick_and_place.py --mode "keyboard"
 ```
 ## render
