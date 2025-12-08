@@ -50,6 +50,7 @@ class keyboard_teleop_controller:
         )
         if not result:
             return
+            #self.robot.get_joint(name)
         self.pub_joint_control.publish(data=result[-1])
         if gripper_open:
             self.pub_gripper_control.publish(data=True)

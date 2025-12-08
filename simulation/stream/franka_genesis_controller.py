@@ -99,7 +99,7 @@ class franka_controller:
                 )
             
     def init_teleop(self):
-        rospy.init_node('genesis_sim', anonymous=True)
+        # rospy.init_node('genesis_sim', anonymous=True)
         # use ros publish to send the pred_mano_params to the client
         self.pub_joint = rospy.Publisher('/genesis/joint_states', Float64MultiArray, queue_size=1)
         self.pub_ee    = rospy.Publisher('/genesis/ee_states', Float64MultiArray, queue_size=1)

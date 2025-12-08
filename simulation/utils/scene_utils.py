@@ -41,6 +41,8 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
                 pos   = (0, 0, 0),
                 quat  = (1.0, 0.0, 0.0, 0.0), # we use w-x-y-z convention for quaternions,
                 scale = 1.0,
+                merge_fixed_links = False,
+                fixed = True
             ),
             material=gs.materials.Rigid(gravity_compensation=1.0),
         )
@@ -158,3 +160,4 @@ def init_scene_physic_params(scene, scene_dict, scene_config, robot_config):
     object_activate_physic_params = scene_config["object_active"]["physic_params"]
     object_active.get_link("object").set_mass(object_activate_physic_params["mass"])
     object_active.get_link("object").set_friction(object_activate_physic_params["friction"])
+    

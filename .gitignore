@@ -1,3 +1,5 @@
 datasets/
 outputs/
 **/__pycache__
+outputs.zip
+assets/objects/
