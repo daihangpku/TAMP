@@ -28,7 +28,6 @@ rosrun TAMP keyboard_node.py
 # Terminal 2: simulation subscriber (replace with your sim integration inside sim_control_node)
 rosrun TAMP sim_control_node.py
 ```
-```
 # Usage
 ## teleoperate using keyboard
 ```bash
@@ -38,4 +37,21 @@ python simulation/teleop_pick_and_place.py --mode "keyboard"
 ## render
 ```bash
 python simulation/render_pick_and_place.py --record_dir datasets/records/banana_plate/ --cfg_path simulation/configs/banana_plate.yaml
+```
+## dp 
+### training
+```bash
+cd policy/diffusion_policy_tamp
+conda activate robodiff
+bash scripts/generate_data.sh -i ../../datasets/records/banana_plate --gripper True --sim # convert2zarr
+bash scripts/train.sh --input /home/daihang/school/core/TAMP/datasets/records/banana_plate_zarr_dp_sim_demonum2/train --task pnp # train
+```
+### eval
+in one terminal at home dir with genesis env:
+```bash
+python simulation/eval_pick_and_place.py 
+```
+in another at policy/diffusion_policy_tamp with robodiff env:
+```bash
+bash scripts/eval.sh --input data/outputs/2025.12.09/14.30.09_train_diffusion_unet_image_real_image/checkpoints/latest.ckpt -g -s
 ```
