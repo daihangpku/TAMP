@@ -142,7 +142,7 @@ def main(args):
             if x_overlap and y_overlap:
                 cprint("active-passive overlap box", "yellow")
                 continue
-            if np.linalg.norm(passive_pos - active_pos) > scene_config.far_threshold:
+            if np.linalg.norm(passive_pos - active_pos) > scene_config["far_threshold"]:
                 cprint("active-passive too near", "yellow")
                 break
             
@@ -192,6 +192,10 @@ def main(args):
         pub_image.publish(ros_image)
         
         controller.step()
+        home_robot = rospy.get_param("/genesis/reset_robot", False)
+        if home_robot==True:
+            reset_layout()
+            rospy.set_param("/genesis/reset_robot", False)
         pbar.update()
 
 if __name__ == '__main__':
