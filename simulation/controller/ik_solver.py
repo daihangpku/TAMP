@@ -234,6 +234,7 @@ class MobileFrankaSolver:
             ik_type (str): Type of IK solver to use. Options: "ik_solver" or "motion_gen"
         """
         self.tensor_args = TensorDeviceType()
+        self.world_cfg = None # World configuration for collision-free motion planning
         self._initialize_robot_config()
         if not no_solver:
             self._initialize_solver(ik_type)
@@ -271,7 +272,7 @@ class MobileFrankaSolver:
         """Initialize the IK solver."""
         self.ik_config = IKSolverConfig.load_from_robot_config(
             self.robot_cfg,
-            None,
+            self.world_cfg,
             rotation_threshold=0.05,
             position_threshold=0.005,
             num_seeds=100,
@@ -290,7 +291,7 @@ class MobileFrankaSolver:
         ee_link = config_file["robot_cfg"]["kinematics"]["ee_link"]
         self.plan_config = MotionGenConfig.load_from_robot_config(
             self.robot_cfg,
-            None,
+            self.world_cfg,
             tensor_args=self.tensor_args,
             interpolation_dt=0.01,
             ee_link_name=ee_link,

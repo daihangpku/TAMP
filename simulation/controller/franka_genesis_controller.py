@@ -82,7 +82,20 @@ class franka_controller:
             np.array(msg.data),
             self.all_dof_ids[:-2],
         )
-
+    def _callback_ee_control(self, msg):
+        ee_control = np.array(msg.data)
+        joint_pos = self.franka.get_dofs_position().cpu().numpy()
+        current_joint_angles = joint_pos[:-2]
+        result = self.franka_solver.solve_ik_by_motion_gen(
+            curr_joint_state=current_joint_angles, 
+            target_trans=ee_control[:3],
+            target_quat=ee_control[3:],
+        )
+        self.current_control = result[-1]
+        self.franka.control_dofs_position(
+            result[-1],
+            self.all_dof_ids[:-2],
+        )
     def _callback_gripper_control(self, msg):
         if not self.default_gripper_state:
             if msg.data:
@@ -107,6 +120,12 @@ class franka_controller:
             "/genesis/joint_control",
             Float64MultiArray,
             self._callback_joint_control,
+            queue_size=1,
+        )
+        self.sub_ee_control = rospy.Subscriber(
+            "/genesis/ee_control",
+            Float64MultiArray,
+            self._callback_ee_control,
             queue_size=1,
         )
         self.sub_gripper_control = rospy.Subscriber(

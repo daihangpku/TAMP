@@ -126,7 +126,7 @@ def main(args):
             if x_overlap and y_overlap:
                 cprint("active-passive overlap box", "yellow")
                 continue
-            if np.linalg.norm(passive_pos - active_pos) > scene_config.far_threshold:
+            if np.linalg.norm(passive_pos - active_pos) > scene_config["far_threshold"]:
                 cprint("active-passive too near", "yellow")
                 break
 
