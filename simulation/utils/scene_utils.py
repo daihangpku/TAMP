@@ -32,13 +32,17 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
             dt = 0.01,
             substeps=2,
         ),
+        # rigid_options = gs.options.RigidOptions(
+        #     enable_collision = True,
+        #     max_collision_pairs = 1000,
+        # ),
         show_viewer = show_viewer,
     )
     if robot_config["asset"].endswith(".urdf"):
         robot = scene.add_entity(
             gs.morphs.URDF(
                 file  = robot_config["asset"],
-                pos   = (0, 0, 0),
+                pos   = (robot_config["default_position"]["x"]/100, robot_config["default_position"]["y"]/100, -robot_config["robot_to_table_height"] / 100 / 2),
                 quat  = (1.0, 0.0, 0.0, 0.0), # we use w-x-y-z convention for quaternions,
                 scale = 1.0,
                 merge_fixed_links = False,
@@ -58,21 +62,24 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
         )
     else:
         raise NotImplementedError(f"unknown robot asset type {robot_config['asset']}")
-    # background = scene.add_entity(
-    #     material=gs.materials.Rigid(rho=3000, friction=0.1),
-    #     morph=gs.morphs.URDF(
-    #         file  = scene_config["background"]["asset"],
-    #         pos   = (0, 0, 0),
-    #         quat  = (1, 0, 0, 0), # we use w-x-y-z convention for quaternions,
-    #         scale = 1.0,
-    #         convexify=False,
-    #         fixed=True,
-    #     ),
-    # )
     background = scene.add_entity(
-        gs.morphs.Plane(pos   = (0, 0, -robot_config["robot_to_table_height"] / 100)),
-        material=gs.materials.Rigid(friction=0.1),
+        material=gs.materials.Rigid(rho=3000, friction=0.1),
+        morph=gs.morphs.URDF(
+            file  = scene_config["background"]["asset"],
+            pos   = (0, 0, -robot_config["robot_to_table_height"] / 100),
+            quat  = (1, 0, 0, 0), # we use w-x-y-z convention for quaternions,
+            scale = 1.0,
+            decimate=False,
+            convexify=False,
+            fixed=True,
+        ),
+        visualize_contact=True,
+        vis_mode = "collision",
     )
+    # background = scene.add_entity(
+    #     gs.morphs.Plane(pos   = (0, 0, -robot_config["robot_to_table_height"] / 100)),
+    #     material=gs.materials.Rigid(friction=0.1),
+    # )
 
     grasp_cam = scene.add_camera(
         res    = (1280, 720),
@@ -93,7 +100,7 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
     # cm --> m
     active_pos   = (scene_config["object_active"]["default_position"]["x"] / 100,
                     scene_config["object_active"]["default_position"]["y"] / 100, 
-                    object_active_height / 2 - robot_config["robot_to_table_height"] / 100 + scene_config["object_active"]["height_thres"] / 100)
+                    object_active_height / 2 + scene_config["object_active"]["height_thres"] / 100)
     active_quat  = rotate_axis_quaternion(scene_config["object_active"]["up_axis"])
     object_active = scene.add_entity(
         material=gs.materials.Rigid(rho=3000, friction=0.1),
@@ -112,7 +119,7 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
     # cm --> m
     passive_pos = (scene_config["object_passive"]["default_position"]["x"] / 100, 
                    scene_config["object_passive"]["default_position"]["y"] / 100, 
-                   object_passive_height / 2 - robot_config["robot_to_table_height"] / 100)
+                   object_passive_height / 2)
     passive_quat = rotate_axis_quaternion(scene_config["object_passive"]["up_axis"])
     object_passive = scene.add_entity(
         morph=gs.morphs.URDF(

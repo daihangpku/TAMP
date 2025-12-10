@@ -264,7 +264,7 @@ def main():
     rospy.init_node('teleop_sim_node', anonymous=True)
 
     output_dir = rospy.get_param('~output_dir', 'datasets/records')
-    scene_cfg_path = rospy.get_param('~scene_cfg_path', 'simulation/configs/scene/banana_plate.yaml')
+    scene_cfg_path = rospy.get_param('~scene_cfg_path', 'simulation/configs/scene/banana_plate_room.yaml')
     robot_cfg_path = rospy.get_param('~robot_cfg_path', 'simulation/configs/robot/mobile_franka.yaml')
 
     scene_config = yaml.safe_load(Path(scene_cfg_path).open('r'))
