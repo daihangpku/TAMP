@@ -1,5 +1,6 @@
 import numpy as np
 from termcolor import cprint
+from scipy.spatial.transform import Rotation as R
 try:
     import rospy
     from std_msgs.msg import Float64MultiArray, Bool
@@ -12,14 +13,16 @@ class keyboard_teleop_controller:
         self.robot_config = robot_config
         self.franka_genesis_controller = franka_genesis_controller
         self.pos_step = 0.01
+        self.rot_step = 0.1  # radians, ~5.7 degrees per press
         self.dpos = np.zeros(3, dtype=np.float32)
+        self.drot_z = 0.0  # accumulated z-axis rotation
         # sub_joint = rospy.Subscriber("/genesis/joint_states", Float64MultiArray, queue_size=1)
         # sub_ee = rospy.Subscriber("/genesis/ee_states", Float64MultiArray, queue_size=1)
         self.pub_joint_control = rospy.Publisher("/genesis/joint_control", Float64MultiArray, queue_size=1)
         self.pub_gripper_control = rospy.Publisher("/genesis/gripper_control", Bool, queue_size=1)
         self.default_joint_pos = self.franka_genesis_controller.default_joint_positions[:-2]
         self.default_pos, self.default_quat = self.franka_genesis_controller.franka_solver.compute_fk(self.default_joint_pos)
-        cprint("W/S: +/- X, A/D: +/- Y, R/F: +/- Z, Z: close gripper, X: open gripper", "cyan")
+        cprint("W/S: +/- X, A/D: +/- Y, R/F: +/- Z, Q/E: rotate Z, Z: close gripper, X: open gripper", "cyan")
 
     def keyboard_listener(self, c):
         gripper_open = self.franka_genesis_controller.current_gripper_control
@@ -35,6 +38,10 @@ class keyboard_teleop_controller:
             self.dpos[2] += self.pos_step
         elif c == "f":
             self.dpos[2] -= self.pos_step
+        elif c == "q":
+            self.drot_z += self.rot_step
+        elif c == "e":
+            self.drot_z -= self.rot_step
         elif c == "z":
             gripper_open = False
         elif c == "x":
@@ -42,11 +49,17 @@ class keyboard_teleop_controller:
         else:
             return
         target_pos = self.default_pos + self.dpos
+        # Apply z-axis rotation to default quaternion (default_quat is in wxyz format)
+        default_rot = R.from_quat(self.default_quat, scalar_first=True)
+        z_rot = R.from_euler('z', self.drot_z)
+        target_rot = z_rot * default_rot
+        target_quat = target_rot.as_quat(scalar_first=True)  # Convert back to wxyz
+        
         current_joint_positions = self.franka_genesis_controller.franka.get_dofs_position().cpu().numpy()[:-2]
         result = self.franka_genesis_controller.franka_solver.solve_ik_by_motion_gen(
             curr_joint_state=current_joint_positions,
             target_trans=target_pos,
-            target_quat=self.default_quat,
+            target_quat=target_quat,
         )
         if not result:
             return
@@ -59,3 +72,4 @@ class keyboard_teleop_controller:
 
     def reset(self):
         self.dpos = np.zeros(3, dtype=np.float32)
+        self.drot_z = 0.0

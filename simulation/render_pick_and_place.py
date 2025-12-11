@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument("--record_dir", type=str, default=None)
     parser.add_argument('--scene_cfg_path', type=str, default=None)
     parser.add_argument('--robot_cfg_path', type=str, default=None)
-    parser.add_argument("--mod", type=int, default=5)
+    parser.add_argument("--mod", type=int, default=10)
     parser.add_argument("--debug", action="store_true", default=False)
     parser.add_argument("--demo_min_idx", type=int, default=0)
     parser.add_argument('--demo_num', type=int, default=200)
