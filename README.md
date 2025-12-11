@@ -1,11 +1,12 @@
 # Installation
-Install ros/noetic first
+## Install ros/noetic first
 ```bash
 echo "deb [trusted=yes arch=amd64] http://deb.repo.autolabor.com.cn jammy main" | sudo tee /etc/apt/sources.list.d/autolabor.list
 sudo apt update
 sudo apt install ros-noetic-autolabor
 roscore
 ```
+## Install TAMP
 ```bash
 # sudo apt install git-lfs 
 git clone https://github.com/daihangpku/TAMP.git
@@ -13,14 +14,48 @@ cd TAMP
 git submodule update --init --recursive
 # git lfs install
 
-conda create -n genesis python=3.10 -y
-conda activate genesis
+conda create -n tamp python=3.10 -y
+conda activate tamp
+pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 cd simulation/curobo
 pip install -e . --no-build-isolation
 cd ../..
+```
+## Install Anygrasp
+```bash
+# Install libssl
+sudo add-apt-repository ppa:nrbrtx/libssl1
+sudo apt update
+sudo apt install libssl1.1
 
-## Run teleop with ROS split processes
+# Install graspnetAPI
+pip install git+https://github.com/hwfan/graspnetAPI.git
+
+# Install pointnet2
+pushd simulation/anygrasp_sdk/pointnet2 && python setup.py install --verbose && popd
+
+# Install MinkowskiEngine
+conda install openblas-devel -c anaconda -y
+# pip install git+https://github.com/NVIDIA/MinkowskiEngine.git --global-option="--blas_include_dirs=${CONDA_PREFIX}/include --blas=openblas" --verbose
+BLAS_INCLUDE_DIRS="${CONDA_PREFIX}/include" BLAS=openblas pip install -v --no-build-isolation git+https://github.com/NVIDIA/MinkowskiEngine.git
+# Copy license
+your_license_path=~/workspace/anygrasp_sdk/license_registration/
+cp -r $your_license_path/license simulation/anygrasp_sdk/grasp_detection
+cp -r $your_license_path/license simulation/anygrasp_sdk/license_registration
+
+# Copy checkpoint
+your_checkpoint_path=~/workspace/anygrasp_sdk/grasp_detection/log/checkpoint_detection.tar
+mkdir -p simulation/anygrasp_sdk/grasp_detection/log/
+cp -r $your_checkpoint_path simulation/anygrasp_sdk/grasp_detection/log/checkpoint_detection.tar
+
+# Copy model
+cp simulation/anygrasp_sdk/grasp_detection/gsnet_versions/gsnet.cpython-310-x86_64-linux-gnu.so simulation/anygrasp_sdk/grasp_detection/gsnet.so
+cp simulation/anygrasp_sdk/license_registration/lib_cxx_versions/lib_cxx.cpython-310-x86_64-linux-gnu.so simulation/anygrasp_sdk/grasp_detection/lib_cxx.so
+
+# To check license
+simulation/anygrasp_sdk/license_registration/license_checker -c simulation/anygrasp_sdk/license_registration/license/licenseCfg.json
+```
 In two terminals:
 ```bash
 # Terminal 1: keyboard publisher

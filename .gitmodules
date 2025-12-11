@@ -4,3 +4,6 @@
 [submodule "policy/diffusion_policy_tamp"]
 	path = policy/diffusion_policy_tamp
 	url = https://github.com/JinkaiC/diffusion_policy_tamp.git
+[submodule "simulation/anygrasp_sdk"]
+	path = simulation/anygrasp_sdk
+	url = https://github.com/graspnet/anygrasp_sdk.git

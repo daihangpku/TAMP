@@ -15,8 +15,9 @@ from simulation.utils.constants import XML_DEFAULT_CFG, BEST_PARAMS, JOINT_NAMES
 from simulation.utils.auto_collect.utils import rotation_matrix_to_quaternion, quaternion_to_rotation_matrix
 from simulation.utils.auto_collect.franka_genesis_controller import pick_and_place_controller
 from termcolor import cprint
+from simulation.controller.franka_genesis_controller import pick_and_place_controller
 from scipy.spatial.transform import Rotation as R
-from simulation.utils.scene_utils import get_object_bbox_and_height, design_pnp_scene
+from simulation.utils.scene_utils import design_pnp_scene, init_scene_physic_params
 def init_anygrasp():
     sys.path.insert(0, "simulation/anygrasp_sdk/grasp_detection")
     from gsnet import AnyGrasp
@@ -153,13 +154,14 @@ def do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam
     return grasp_rot_w, grasp_pos_w, grasp_quat_w
 
 def main(args):
-    scene_config = EasyDict(yaml.safe_load(Path(args.cfg_path).open('r')))
+    scene_config = yaml.safe_load(Path(args.scene_cfg_path).open('r'))
+    robot_config = yaml.safe_load(Path(args.robot_cfg_path).open('r'))
     
     from datetime import datetime
     now = datetime.now()
     milliseconds = now.microsecond // 1000
     timestamp = now.strftime("%Y%m%d_%H%M%S") + f"_{milliseconds:03d}"
-    task_name = scene_config.task_name
+    task_name = scene_config["task_name"]
     process_output_dir = os.path.join(args.output_dir, task_name, timestamp)
     os.makedirs(process_output_dir, exist_ok=True)
                              
@@ -169,7 +171,7 @@ def main(args):
     
     # Init Genesis
     gs.init(backend=gs.gpu, logging_level = 'warning')
-    scene, scene_config, scene_dict, scene_asset_path_dict, cams, default_poses = design_pnp_scene(scene_config, show_viewer=args.show_viewer)
+    scene, scene_dict, cams, default_poses = design_pnp_scene(scene_config, robot_config, show_viewer=True)
     scene.build()
     grasp_cam = cams["grasp_cam"]
     desk_cam = cams["desk_cam"]
@@ -183,25 +185,20 @@ def main(args):
     robot = scene_dict["robot"]
     object_active = scene_dict["object_active"]
     object_passive = scene_dict["object_passive"]
-    
-    # Set phys params
-    all_dof_ids = [robot.get_joint(name).dof_idx for name in JOINT_NAMES]
-    robot.set_dofs_kp(kp = BEST_PARAMS["kp"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kv(kv = BEST_PARAMS["kv"], dofs_idx_local=all_dof_ids[:7])
-    robot.set_dofs_kp(kp = [50000, 50000], dofs_idx_local=all_dof_ids[7:9])
-    robot.set_dofs_kv(kv = [10000, 10000], dofs_idx_local=all_dof_ids[7:9])
-    robot.set_dofs_force_range([-100, -100], [100, 100], dofs_idx_local=all_dof_ids[7:9])
-    
-    object_active.get_link("object").set_mass(0.1)
-    object_active.get_link("object").set_friction(0.2)
-    
+    init_scene_physic_params(scene, scene_dict, scene_config, robot_config)
     cprint("*" * 40, "green")
     cprint("  Initializing Controller", "green")
     cprint("*" * 40, "green")
     
-    # Init Controller
-    controller = pick_and_place_controller(scene=scene, scene_config=scene_config, robot=robot, object_active=object_active, object_passive=object_passive, default_poses=default_poses, close_thres=scene_config.robot.close_thres)
-
+    controller = pick_and_place_controller(
+        scene=scene,
+        scene_dict=scene_dict,
+        scene_config=scene_config,
+        robot_config=robot_config,
+        default_poses=default_poses,
+        close_thres=robot_config["close_thres"],
+        teleop=None,
+    )
     while True:
         cprint("*" * 40, "green")
         cprint(f"Trajectory count {controller.traj_cnt}", "green")
@@ -216,20 +213,23 @@ def main(args):
             active_pos = object_active.get_pos().cpu().numpy()
             passive_aabb = object_passive.get_link("object").get_AABB()
             active_aabb = object_active.get_link("object").get_AABB()
-            
-            # object aabb must in the borders
-            if active_aabb[0, 0] > scene_config.object_active.pos_range.x[0] / 100 and \
-               active_aabb[0, 1] > scene_config.object_active.pos_range.y[0] / 100 and \
-               active_aabb[1, 0] < scene_config.object_active.pos_range.x[1] / 100 and \
-               active_aabb[1, 1] < scene_config.object_active.pos_range.y[1] / 100 :
+
+            if (
+                active_aabb[0, 0] > scene_config["object_active"]["pos_range"]["x"][0] / 100
+                and active_aabb[0, 1] > scene_config["object_active"]["pos_range"]["y"][0] / 100
+                and active_aabb[1, 0] < scene_config["object_active"]["pos_range"]["x"][1] / 100
+                and active_aabb[1, 1] < scene_config["object_active"]["pos_range"]["y"][1] / 100
+            ):
                 pass
             else:
                 cprint("active out of range", "yellow")
                 continue
-            if passive_aabb[0, 0] > scene_config.object_passive.pos_range.x[0] / 100 and \
-               passive_aabb[0, 1] > scene_config.object_passive.pos_range.y[0] / 100 and \
-               passive_aabb[1, 0] < scene_config.object_passive.pos_range.x[1] / 100 and \
-               passive_aabb[1, 1] < scene_config.object_passive.pos_range.y[1] / 100 :
+            if (
+                passive_aabb[0, 0] > scene_config["object_passive"]["pos_range"]["x"][0] / 100
+                and passive_aabb[0, 1] > scene_config["object_passive"]["pos_range"]["y"][0] / 100
+                and passive_aabb[1, 0] < scene_config["object_passive"]["pos_range"]["x"][1] / 100
+                and passive_aabb[1, 1] < scene_config["object_passive"]["pos_range"]["y"][1] / 100
+            ):
                 pass
             else:
                 cprint("passive out of range", "yellow")
@@ -241,8 +241,7 @@ def main(args):
             if x_overlap and y_overlap:
                 cprint("active-passive overlap box", "yellow")
                 continue
-            # the objects should not be too near
-            if np.linalg.norm(passive_pos - active_pos) > scene_config.far_threshold:
+            if np.linalg.norm(passive_pos - active_pos) > scene_config["far_threshold"]:
                 cprint("active-passive too near", "yellow")
                 break
             
@@ -278,12 +277,12 @@ def main(args):
         cprint(">>> Planning.", "yellow")
         # Plan
         ee_goals = []
-        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config.object_active.motion_1_height / 100]), grasp_quat_w)))
-        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config.object_active.skill_1_height / 100]), grasp_quat_w)))
-        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config.object_active.motion_2_height / 100], grasp_quat_w))))
-        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config.object_active.motion_2_height / 100],  default_ee_quat))))
-        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config.object_active.skill_2_height / 100],  default_ee_quat))))
-        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config.object_active.motion_2_height / 100],  default_ee_quat))))
+        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config["object_active"]["motion_1_height"] / 100]), grasp_quat_w)))
+        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config["object_active"]["skill_1_height"] / 100]), grasp_quat_w)))
+        ee_goals.append(np.hstack(((grasp_pos_w + [0, 0, scene_config["object_active"]["motion_2_height"] / 100], grasp_quat_w))))
+        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["motion_2_height"] / 100],  default_ee_quat))))
+        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["skill_2_height"] / 100],  default_ee_quat))))
+        ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["motion_2_height"] / 100],  default_ee_quat))))
         ee_goals = np.array(ee_goals)
 
         cprint(">>> Executing.", "yellow")
@@ -317,7 +316,8 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="datasets/records")
-    parser.add_argument("--cfg_path", type=str, default="simulation/configs/banana_plate.yaml")
+    parser.add_argument("--scene_cfg_path", type=str, default="simulation/configs/banana_plate.yaml")
+    parser.add_argument("--robot_cfg_path", type=str, default="simulation/configs/robot/panda_xml.yaml")
     parser.add_argument("--show_viewer", action='store_true')
     parser.add_argument("--debug_anygrasp", action='store_true')
     parser.add_argument("--debug_anygrasp_showall", action='store_true')
