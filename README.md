@@ -1,4 +1,5 @@
 # Installation
+The whole project is tested on cuda-11.8.
 ## Install ros/noetic first
 ```bash
 echo "deb [trusted=yes arch=amd64] http://deb.repo.autolabor.com.cn jammy main" | sudo tee /etc/apt/sources.list.d/autolabor.list
@@ -23,6 +24,7 @@ pip install -e . --no-build-isolation
 cd ../..
 ```
 ## Install Anygrasp
+In tamp env:
 ```bash
 # Install libssl
 sudo add-apt-repository ppa:nrbrtx/libssl1
@@ -62,6 +64,24 @@ In two terminals:
 rosrun TAMP keyboard_node.py
 # Terminal 2: simulation subscriber (replace with your sim integration inside sim_control_node)
 rosrun TAMP sim_control_node.py
+```
+
+## Install DP3
+```bash
+cd policy/3D-Diffusion-Policy
+conda remove -n dp3 --all
+conda create -n dp3 python=3.8
+conda activate dp3
+pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu118
+cd 3D-Diffusion-Policy && pip install -e . && cd ..
+cd third_party/pytorch3d_simplified && pip install -e . && cd ../..
+pip install zarr==2.12.0 wandb ipdb gpustat dm_control omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 numba==0.56.4 moviepy imageio av matplotlib termcolor
+pip install kaleido plotly
+cd visualizer && pip install -e . && cd ..
+```
+## Install DP
+```bash
+cd policy/diffusion_policy_tamp
 ```
 # Usage
 ## teleoperate using keyboard
