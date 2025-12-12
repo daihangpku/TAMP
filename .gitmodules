@@ -7,3 +7,6 @@
 [submodule "simulation/anygrasp_sdk"]
 	path = simulation/anygrasp_sdk
 	url = https://github.com/graspnet/anygrasp_sdk.git
+[submodule "policy/3D-Diffusion-Policy"]
+	path = policy/3D-Diffusion-Policy
+	url = https://github.com/ruhaoxuan/3D-Diffusion-Policy.git
