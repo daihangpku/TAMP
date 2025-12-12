@@ -4,3 +4,4 @@ outputs/
 outputs.zip
 assets/objects/
 policy/twinaligner-policy-2d
+**/build/
