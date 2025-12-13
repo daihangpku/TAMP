@@ -118,3 +118,7 @@ cd policy/3D-Diffusion-Policy
 python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate --save_dir ../../datasets/records --env_name banana_plate
 bash scripts/train_policy.sh -a dp3 -t pick -i 0112 -s 0 -g 0 --zarr_path ../../../datasets/records/banana_plate_zarr_dp3_sim
 ```
+### eval
+```bash
+python 3D-Diffusion-Policy/eval_real_robot_dp3.py -i /home/daihang/school/core/TAMP/policy/3D-Diffusion-Policy/3D-Diffusion-Policy/data/outputs/pick-dp3-0112_seed0/checkpoints/epoch=1800-test_mean_score=-0.001.ckpt -c -g
+```
