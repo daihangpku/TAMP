@@ -167,6 +167,7 @@ def main(args):
     consumer.start()
     
     pub_image = rospy.Publisher('/genesis/color_image', Image, queue_size=1)
+    pub_depth = rospy.Publisher('/genesis/depth_image', Image, queue_size=1)
     
     while True:
         if not listener.is_alive():
@@ -191,6 +192,16 @@ def main(args):
         ros_image.data = rgb_image.tobytes()
         pub_image.publish(ros_image)
         
+        ros_depth = Image()
+        ros_depth.header.stamp = ros_image.header.stamp
+        ros_depth.header.frame_id = "camera_frame"
+        ros_depth.height = depth_image.shape[0]
+        ros_depth.width = depth_image.shape[1]
+        ros_depth.encoding = "32FC1"
+        ros_depth.step = ros_depth.width * 4
+        ros_depth.data = depth_image.astype(np.float32).tobytes()
+        pub_depth.publish(ros_depth)
+
         controller.step()
         home_robot = rospy.get_param("/genesis/reset_robot", False)
         if home_robot==True:

@@ -78,6 +78,8 @@ cd third_party/pytorch3d_simplified && pip install -e . && cd ../..
 pip install zarr==2.12.0 wandb ipdb gpustat dm_control omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 numba==0.56.4 moviepy imageio av matplotlib termcolor h5py open3d opencv-python huggingface_hub==0.11.1
 pip install kaleido plotly
 cd visualizer && pip install -e . && cd ..
+pip install pynput rospkg
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
 ```
 ## Install DP
 ```bash
