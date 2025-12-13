@@ -75,7 +75,7 @@ conda activate dp3
 pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu118
 cd 3D-Diffusion-Policy && pip install -e . && cd ..
 cd third_party/pytorch3d_simplified && pip install -e . && cd ../..
-pip install zarr==2.12.0 wandb ipdb gpustat dm_control omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 numba==0.56.4 moviepy imageio av matplotlib termcolor
+pip install zarr==2.12.0 wandb ipdb gpustat dm_control omegaconf hydra-core==1.2.0 dill==0.3.5.1 einops==0.4.1 diffusers==0.11.1 numba==0.56.4 moviepy imageio av matplotlib termcolor h5py open3d opencv-python huggingface_hub==0.11.1
 pip install kaleido plotly
 cd visualizer && pip install -e . && cd ..
 ```
@@ -109,4 +109,10 @@ python simulation/eval_pick_and_place.py
 in another at policy/diffusion_policy_tamp with robodiff env:
 ```bash
 bash scripts/eval.sh --input data/outputs/2025.12.09/14.30.09_train_diffusion_unet_image_real_image/checkpoints/latest.ckpt -g -s
+```
+## dp3
+```bash
+cd policy/3D-Diffusion-Policy
+python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate --save_dir ../../datasets/records --env_name banana_plate
+bash scripts/train_policy.sh -a dp3 -t pick -i 0112 -s 0 -g 0 --zarr_path ../../../datasets/records/banana_plate_zarr_dp3_sim
 ```
