@@ -14,6 +14,7 @@ from curobo.wrap.reacher.motion_gen import (
     MotionGenPlanConfig,
     PoseCostMetric,
 )
+from curobo.geom.types import WorldConfig
 from termcolor import cprint
 
 # Enable PyTorch performance optimizations
@@ -226,7 +227,7 @@ MOBILE_FRANKA_JS_NAMES = [
 class MobileFrankaSolver:
     """Inverse Kinematics solver for Franka Emika Panda robot."""
 
-    def __init__(self, ik_type="motion_gen", no_solver=False):
+    def __init__(self, ik_type="motion_gen", no_solver=False, scene_config=None, robot_config=None):
         """
         Initialize the Franka IK Solver.
 
@@ -234,7 +235,22 @@ class MobileFrankaSolver:
             ik_type (str): Type of IK solver to use. Options: "ik_solver" or "motion_gen"
         """
         self.tensor_args = TensorDeviceType()
-        self.world_cfg = None # World configuration for collision-free motion planning
+        room_pose = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+        self.world_cfg_dict = {
+            "mesh": {
+                "base_scene": {
+                    "pose": room_pose,
+                    "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["mesh_asset"],
+                },
+            },
+            "cuboid": {
+                "test_cube": {
+                    "pose": [1, 0.5, robot_config["robot_to_table_height"] / 100 / 2, 1.0, 0.0, 0.0, 0.0],
+                    "dims": [1, 1, 1]
+                }
+            }
+        }
+        self.world_cfg = WorldConfig.from_dict(self.world_cfg_dict) # World configuration for collision-free motion planning
         self._initialize_robot_config()
         if not no_solver:
             self._initialize_solver(ik_type)

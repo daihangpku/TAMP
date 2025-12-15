@@ -32,15 +32,15 @@ def design_scene(scene_config, robot_config, show_viewer=True):
     scene, scene_dict, cams, default_poses = design_pnp_scene(scene_config, robot_config, show_viewer=show_viewer)
     left_cam = scene.add_camera(
         res    = (1280, 720),
-        pos    = (0.62, -0.5, 0.5),
-        lookat = (0.62, 0, 0),
+        pos    = (0, -0.5, 0.5 + robot_config["robot_to_table_height"] / 100),
+        lookat = (0, 0, robot_config["robot_to_table_height"] / 100),
         fov    = 60,
         GUI    = True,
     )
     front_cam = scene.add_camera(
         res    = (1280, 720),
-        pos    = (1.5, -0.05, 0.3),
-        lookat = (0.5, -0.05, 0.3),
+        pos    = (1.5, -0.05, 0.3 + robot_config["robot_to_table_height"] / 100),
+        lookat = (0.5, -0.05, 0.3 + robot_config["robot_to_table_height"] / 100),
         fov    = 30,
         GUI    = True,
     )
@@ -182,8 +182,8 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="datasets/records")
-    parser.add_argument("--scene_cfg_path", type=str, default="simulation/configs/scene/banana_plate.yaml")
-    parser.add_argument("--robot_cfg_path", type=str, default="simulation/configs/robot/panda_xml.yaml")
+    parser.add_argument("--scene_cfg_path", type=str, default="simulation/configs/scene/banana_plate_room.yaml")
+    parser.add_argument("--robot_cfg_path", type=str, default="simulation/configs/robot/mobile_franka.yaml")
     parser.add_argument("--mode", type=str, default="keyboard", choices=["pico", "keyboard"])
     args = parser.parse_args()
     main(args)
