@@ -5,15 +5,14 @@ import numpy as np
 import open3d as o3d
 from PIL import Image
 import sys
+import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.getcwd())
 import genesis as gs
 import yaml
 from pathlib import Path
 from easydict import EasyDict
-from simulation.utils.constants import XML_DEFAULT_CFG, BEST_PARAMS, JOINT_NAMES
-from simulation.utils.auto_collect.utils import rotation_matrix_to_quaternion, quaternion_to_rotation_matrix
-from simulation.utils.auto_collect.franka_genesis_controller import pick_and_place_controller
+from simulation.controller.utils import rotation_matrix_to_quaternion, quaternion_to_rotation_matrix
 from termcolor import cprint
 from simulation.controller.franka_genesis_controller import pick_and_place_controller
 from scipy.spatial.transform import Rotation as R
@@ -76,7 +75,6 @@ def remove_non_z_rotation(rotation_matrix: np.ndarray) -> np.ndarray:
     return new_rotation_matrix
 
 def do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam_intr, controller, collision_detection=True, debug=False, debug_anygrasp_showall=False):
-    default_joint_angles = controller.default_joint_angles
     fx, fy = topcam_intr[0, 0], topcam_intr[1, 1]
     cx, cy = topcam_intr[0, 2], topcam_intr[1, 2]
     
@@ -136,7 +134,7 @@ def do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam
     
     # to make joint7 shorter distance
     angle_rad = np.arctan2(grasp_rot_w[0, 1], -grasp_rot_w[1, 1])
-    default_quat = controller.default_hand_quat
+    default_quat = controller.default_ee_quat
     default_rot_w = quaternion_to_rotation_matrix(default_quat)
     default_rad = np.arctan2(default_rot_w[0, 1], -default_rot_w[1, 1])
     possible_rads = np.array([angle_rad - 2*np.pi, angle_rad - np.pi, angle_rad, angle_rad + np.pi, angle_rad + 2 * np.pi])
@@ -247,8 +245,10 @@ def main(args):
             
         default_ee_quat = controller.franka.get_link("hand").get_quat().cpu().numpy()
         controller.start_record()
-        for i in range(50):
-            robot.set_dofs_position([0, 0, 0, 0, 0, 0, 0, 0, 0], dofs_idx_local=all_dof_ids)
+        for i in range(500):
+            joint_pos = robot.get_dofs_position().cpu().numpy()
+            joint_pos[:] = 0
+            robot.set_dofs_position(joint_pos)
             scene.step()
             
         
@@ -263,15 +263,26 @@ def main(args):
             
             # AnyGrasp
             topcam_rgb, topcam_depth, _, _ = grasp_cam.render(rgb=True, depth=True)
-            
+            if args.show_topcam:
+                plt.figure("TopCam")
+                plt.clf()
+                plt.subplot(1, 2, 1)
+                plt.imshow(topcam_rgb)
+                plt.title("RGB")
+                plt.axis("off")
+                plt.subplot(1, 2, 2)
+                plt.imshow(topcam_depth, cmap="gray")
+                plt.title("Depth")
+                plt.axis("off")
+                plt.pause(0.001)
             topcam_extr = np.array(grasp_cam.extrinsics)
             topcam_intr = np.array(grasp_cam.intrinsics)
-            grasp_rot_w, grasp_pos_w, grasp_quat_w = do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam_intr, controller, collision_detection=scene_config.collision_detection, debug=args.debug_anygrasp, debug_anygrasp_showall=args.debug_anygrasp_showall)
+            grasp_rot_w, grasp_pos_w, grasp_quat_w = do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam_intr, controller, collision_detection=scene_config["collision_detection"], debug=args.debug_anygrasp, debug_anygrasp_showall=args.debug_anygrasp_showall)
             object_passive.set_pos(passive_pos)
             object_passive_pos = object_passive.get_pos().cpu().numpy()
             
-        except:
-            cprint(">>> AnyGrasp Failed. Reset.", "yellow")
+        except Exception as e:
+            cprint(f">>> AnyGrasp Failed. Reset. Error: {e}", "yellow")
             continue
         
         cprint(">>> Planning.", "yellow")
@@ -284,7 +295,8 @@ def main(args):
         ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["skill_2_height"] / 100],  default_ee_quat))))
         ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["motion_2_height"] / 100],  default_ee_quat))))
         ee_goals = np.array(ee_goals)
-
+        print("ee_goals:")
+        print(ee_goals)
         cprint(">>> Executing.", "yellow")
         try:
             # Execute plan
@@ -304,7 +316,7 @@ def main(args):
         # Judge and save
         passive_pos = object_passive.get_pos().cpu().numpy()
         active_pos = object_active.get_pos().cpu().numpy()
-        if np.linalg.norm(passive_pos - active_pos) > scene_config.near_threshold :
+        if np.linalg.norm(passive_pos - active_pos) > scene_config["near_threshold"]:
             print("failed")
         else:
             print("success")
@@ -316,9 +328,10 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="datasets/records")
-    parser.add_argument("--scene_cfg_path", type=str, default="simulation/configs/banana_plate.yaml")
+    parser.add_argument("--scene_cfg_path", type=str, default="simulation/configs/scene/banana_plate.yaml")
     parser.add_argument("--robot_cfg_path", type=str, default="simulation/configs/robot/panda_xml.yaml")
     parser.add_argument("--show_viewer", action='store_true')
+    parser.add_argument("--show_topcam", action='store_true', help="Show top camera RGB/Depth for debugging")
     parser.add_argument("--debug_anygrasp", action='store_true')
     parser.add_argument("--debug_anygrasp_showall", action='store_true')
     args = parser.parse_args()
