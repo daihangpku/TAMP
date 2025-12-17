@@ -6,6 +6,7 @@ import numpy as np
 import open3d as o3d
 from PIL import Image
 import sys
+import queue
 
 sys.path.insert(0, os.getcwd())
 import genesis as gs
@@ -131,38 +132,22 @@ def main(args):
                 break
 
     
+    input_queue = queue.Queue()
+
     def on_press(key):
-        if args.mode != "keyboard":
-            return
         try:
             c = key.char
-            nonlocal keyboard_controller
-            keyboard_controller.keyboard_listener(c)
+            input_queue.put(('press', c))
         except AttributeError:
-            return
+            pass
 
     def on_release(key):
-        nonlocal process_output_dir
-        nonlocal controller
-        nonlocal reset_layout
         try:
             c = key.char
+            input_queue.put(('release', c))
         except AttributeError:
-            return
-        if c == "1":
-            print("recollect !!!")
-            controller.clean_traj()
-            reset_layout()
-        elif c == "2":
-            print("start recording !!!")
-            controller.start_record()
-        elif c == "3":
-            print("end recording !!!")
-            controller.end_record()
-        elif c == "4":
-            print("save record ...")
-            controller.save_traj(process_output_dir)
-            reset_layout()
+            pass
+
     cprint("1: reset & recollect, 2: start record, 3: end record, 4: save & reset", "cyan")
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
@@ -172,10 +157,32 @@ def main(args):
         if not listener.is_alive():
             listener = keyboard.Listener(on_press=on_press, on_release=on_release)
             listener.start()
+        
+        while not input_queue.empty():
+            event_type, c = input_queue.get()
+            if event_type == 'press':
+                if args.mode == "keyboard":
+                    keyboard_controller.keyboard_listener(c)
+            elif event_type == 'release':
+                if c == "1":
+                    print("recollect !!!")
+                    controller.clean_traj()
+                    reset_layout()
+                elif c == "2":
+                    print("start recording !!!")
+                    controller.start_record()
+                elif c == "3":
+                    print("end recording !!!")
+                    controller.end_record()
+                elif c == "4":
+                    print("save record ...")
+                    controller.save_traj(process_output_dir)
+                    reset_layout()
+
+        controller.step()
         for cam_key in cams.keys():
             if cam_key.startswith("anno"):
                 cams[cam_key].render()
-        controller.step()
         pbar.update()
 
 if __name__ == '__main__':

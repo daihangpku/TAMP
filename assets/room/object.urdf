@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<object name="background_scene">
+
+  <link name="background_link">
+
+    <!-- 房间 visual -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="room.obj" scale="1 1 1"/>
+      </geometry>
+    </visual>
+
+    <!-- 房间 collision -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="room.obj" scale="1 1 1"/>
+      </geometry>
+    </collision>
+
+
+  </link>
+
+</object>

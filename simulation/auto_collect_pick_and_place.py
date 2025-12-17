@@ -169,7 +169,7 @@ def main(args):
     
     # Init Genesis
     gs.init(backend=gs.gpu, logging_level = 'warning')
-    scene, scene_dict, cams, default_poses = design_pnp_scene(scene_config, robot_config, show_viewer=True)
+    scene, scene_dict, cams, default_poses = design_pnp_scene(scene_config, robot_config, show_viewer=args.show_viewer)
     scene.build()
     grasp_cam = cams["grasp_cam"]
     desk_cam = cams["desk_cam"]

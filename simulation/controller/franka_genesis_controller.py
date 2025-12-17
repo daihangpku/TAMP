@@ -142,7 +142,7 @@ class franka_controller:
         joint_pos_msg = Float64MultiArray(data=joint_pos_list)
         self.pub_joint.publish(joint_pos_msg)
         
-        joint_pos = self.franka.get_dofs_position().cpu().numpy()
+        # joint_pos = self.franka.get_dofs_position().cpu().numpy()
         trans, rot_quat = self.franka_solver.compute_fk(joint_pos)
         current_ee_pose = np.concatenate([trans, rot_quat])
         current_ee_pose_list = current_ee_pose.flatten().tolist()
