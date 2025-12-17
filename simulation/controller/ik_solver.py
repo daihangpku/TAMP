@@ -240,7 +240,7 @@ class MobileFrankaSolver:
             "mesh": {
                 "base_scene": {
                     "pose": room_pose,
-                    "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["mesh_asset"],
+                    "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["simple_mesh_asset"],
                 },
             },
         }

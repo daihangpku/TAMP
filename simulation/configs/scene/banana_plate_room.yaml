@@ -2,6 +2,7 @@ task_name: banana_plate
 background:
   asset: assets/room/object.urdf
   mesh_asset: assets/room/room.obj
+  simple_mesh_asset: assets/room/simple_room.obj
 object_active:
   asset: outputs/banana-20250813_150647_221/object.urdf
   mesh_asset: outputs/banana-20250813_150647_221/mesh_w_vertex_color_abs.ply
