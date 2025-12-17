@@ -34,7 +34,7 @@ class franka_controller:
         self.default_ee_quat = self.franka.get_link(self.ee_link).get_quat().cpu().numpy()
         self.default_ee_pos = self.franka.get_link(self.ee_link).get_pos().cpu().numpy()
         if robot_config["name"] == "mobile_franka":
-            self.franka_solver = MobileFrankaSolver(ik_type="motion_gen", no_solver=False)
+            self.franka_solver = MobileFrankaSolver(ik_type="motion_gen", no_solver=False, scene_config=self.scene_config, robot_config=self.robot_config)
             cprint("mobile franka solver loaded", "green")
         else:
             self.franka_solver = FrankaSolver(ik_type="motion_gen", ik_sim=True, simulator="genesis", no_solver=False)

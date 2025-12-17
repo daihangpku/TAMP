@@ -1,7 +1,7 @@
 asset: assets/robot/franka_description/franka_panda_mobile_xy_tz.urdf
 # asset: xml/franka_emika_panda/panda_free_base.xml
 name: mobile_franka
-robot_to_table_height: 1.58 # cm
+robot_to_table_height: 47.25 # cm
 close_thres: 1.0 #cm
 joint_names:
     - base_x
@@ -17,7 +17,7 @@ joint_names:
     - panda_finger_joint1
     - panda_finger_joint2
 ee_link: panda_hand
-default_joint_positions: [0.0, 0.0, 0.0, 0.03995192, -0.00592799, -0.18448183, -2.21950033, -0.00492253, 2.22304146, 0.69084185, 0.04, 0.04]
+default_joint_positions: [-0.5, 0.0, 0.0, 0.03995192, -0.00592799, -0.18448183, -2.21950033, -0.00492253, 2.22304146, 0.69084185, 0.04, 0.04]
 physic_params:
     kp: [
         5000,
