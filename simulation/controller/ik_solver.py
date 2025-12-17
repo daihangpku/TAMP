@@ -235,22 +235,15 @@ class MobileFrankaSolver:
             ik_type (str): Type of IK solver to use. Options: "ik_solver" or "motion_gen"
         """
         self.tensor_args = TensorDeviceType()
-        room_pose = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
-        self.world_cfg_dict = {
+        room_pose = [0.0, 0.0, -robot_config["robot_to_table_height"] / 100 / 2, 1.0, 0.0, 0.0, 0.0]
+        self.world_cfg = {
             "mesh": {
                 "base_scene": {
                     "pose": room_pose,
                     "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["mesh_asset"],
                 },
             },
-            "cuboid": {
-                "test_cube": {
-                    "pose": [1, 0.5, robot_config["robot_to_table_height"] / 100 / 2, 1.0, 0.0, 0.0, 0.0],
-                    "dims": [1, 1, 1]
-                }
-            }
         }
-        self.world_cfg = WorldConfig.from_dict(self.world_cfg_dict) # World configuration for collision-free motion planning
         self._initialize_robot_config()
         if not no_solver:
             self._initialize_solver(ik_type)
@@ -306,7 +299,7 @@ class MobileFrankaSolver:
         base_link = config_file["robot_cfg"]["kinematics"]["base_link"]
         ee_link = config_file["robot_cfg"]["kinematics"]["ee_link"]
         self.plan_config = MotionGenConfig.load_from_robot_config(
-            self.robot_cfg,
+            str(join_path(os.path.dirname(__file__), "franka_mobile.yml")),
             self.world_cfg,
             tensor_args=self.tensor_args,
             interpolation_dt=0.01,
@@ -315,9 +308,9 @@ class MobileFrankaSolver:
         self.motion_gen = MotionGen(self.plan_config)
         cprint("warming up motion gen solver", "green")
 
-        self.motion_gen.warmup(warmup_js_trajopt=False)
+        self.motion_gen.warmup()
         self.plan_config_temp = MotionGenPlanConfig(
-            enable_graph=False,
+            enable_graph=True,
             enable_graph_attempt=4,
             max_attempts=2,
             enable_finetune_trajopt=True,
