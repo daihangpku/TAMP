@@ -80,9 +80,6 @@ def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_
         seg_np = sim_seg
         if isinstance(seg_np, torch.Tensor):
             seg_np = seg_np.detach().cpu().numpy()
-            
-        # print(seg_np.dtype, seg_np.min(), seg_np.max())
-        # print(scene_dict.get("robot"))
 
         mask = np.zeros(seg_np.shape, dtype=np.uint8)
         entity = [(scene_dict.get("background"), "background"), (scene_dict.get("robot"), "robot"), (scene_dict.get("object_active"), "object_active"), (scene_dict.get("object_passive"), "object_passive")]

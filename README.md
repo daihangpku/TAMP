@@ -95,6 +95,8 @@ python simulation/teleop_pick_and_place.py --mode "keyboard"
 ```bash
 python simulation/render_pick_and_place.py --record_dir datasets/records/banana_plate/ --cfg_path simulation/configs/banana_plate.yaml
 ```
+_mask.png中0是background 1是active object 2是passive object
+
 ## dp 
 ### training
 ```bash
