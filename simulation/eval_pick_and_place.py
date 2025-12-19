@@ -173,7 +173,7 @@ def main(args):
         if not listener.is_alive():
             listener = keyboard.Listener(on_press=on_press, on_release=on_release)
             listener.start()
-        rgb_image, depth_image = render_scene(scene, scene_dict, None, cams["desk_cam"])
+        rgb_image, depth_image, mask_image = render_scene(scene, scene_dict, None, cams["desk_cam"])
         
         if not image_queue.empty():
             try:
