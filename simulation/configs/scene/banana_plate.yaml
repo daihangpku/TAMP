@@ -1,4 +1,17 @@
 task_name: banana_plate
+camera:
+  grasp_cam:
+    res: [1280, 720]
+    pos: [0.62, -0.05, 1.0]
+    lookat: [0.62, -0.05, 0.0]
+    fov: 30
+    GUI: False
+  desk_cam:
+    res: [1280, 720]
+    pos: [1.5, 0.0, 0.5]
+    lookat: [0.62, 0.0, 0.0]
+    fov: 60
+    GUI: False
 background:
   asset: outputs/background-20250814_232642_441/splitted_point_cloud/object.urdf
 object_active:

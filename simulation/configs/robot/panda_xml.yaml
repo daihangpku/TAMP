@@ -1,7 +1,7 @@
 asset: xml/franka_emika_panda/panda.xml
 # asset: assets/robot/franka_description/franka_panda.urdf
 name: franka
-robot_to_table_height: 1.58 # cm
+robot_to_table_height: 0 # cm
 default_position:
     x: 0 # cm
     y: 0 # cm

@@ -1,8 +1,24 @@
 task_name: banana_plate
+
+camera:
+  grasp_cam:
+    res: [1280, 720]
+    pos: [0, -0.05, 1.0]
+    lookat: [0, -0.05, 0.0]
+    fov: 30
+    GUI: False
+  desk_cam:
+    res: [1280, 720]
+    pos: [1, 0.0, 0.5]
+    lookat: [0, 0.0, 0.0]
+    fov: 60
+    GUI: False
+
 background:
   asset: assets/room/object.urdf
   mesh_asset: assets/room/room.obj
   simple_mesh_asset: assets/room/simple_room.obj
+
 object_active:
   asset: outputs/banana-20250813_150647_221/object.urdf
   mesh_asset: outputs/banana-20250813_150647_221/mesh_w_vertex_color_abs.ply

@@ -18,7 +18,7 @@ os.environ["PYOPENGL_PLATFORM"] = "egl"
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from simulation.utils.scene_utils import design_pnp_scene
 
-def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth"]):
+def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_types=["rgb", "depth", "mask"]):
     if data is not None:
         robot = scene_dict["robot"]
         object_active = scene_dict["object_active"]
@@ -36,15 +36,26 @@ def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_
 
     rgb_image = None
     depth_image = None
+    mask_image = None
     need_rgb = "rgb" in render_types
     need_depth = "depth" in render_types
-    if not (need_rgb or need_depth):
-        return rgb_image, depth_image
+    # mask rendering is always attempted but only saved if present downstream
+    need_mask = "mask" in render_types
+    if not (need_rgb or need_depth or need_mask):
+        return rgb_image, depth_image, mask_image
 
     # 使用仿真相机渲染
-    rgb_raw, depth_raw, _, _ = cam.render(rgb=need_rgb, depth=need_depth)
+    try:
+        # Try to also get a segmentation/id buffer if supported by genesis
+        rgb_raw, depth_raw, seg_raw, _ = cam.render(rgb=need_rgb, depth=need_depth, segmentation=need_mask)
+    except TypeError:
+        # Fallback to original signature if segmentation arg not supported
+        rgb_raw, depth_raw, _, _ = cam.render(rgb=need_rgb, depth=need_depth)
+        seg_raw = None
+
     sim_rgb = rgb_raw if need_rgb else None
     sim_depth = depth_raw if need_depth else None
+    sim_seg = seg_raw if need_mask else None
 
     if sim_rgb is not None:
         rgb_np = sim_rgb
@@ -64,7 +75,38 @@ def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_
             depth_np = depth_np.detach().cpu().numpy()
         depth_image = np.clip(depth_np * 1000.0, 0, 65535).astype('uint16')
 
-    return rgb_image, depth_image
+    # Build categorical mask: background=0, robot=1, active=2, passive=3
+    if sim_seg is not None:
+        seg_np = sim_seg
+        if isinstance(seg_np, torch.Tensor):
+            seg_np = seg_np.detach().cpu().numpy()
+            
+        # print(seg_np.dtype, seg_np.min(), seg_np.max())
+        # print(scene_dict.get("robot"))
+
+        mask = np.zeros(seg_np.shape, dtype=np.uint8)
+        entity = [(scene_dict.get("background"), "background"), (scene_dict.get("robot"), "robot"), (scene_dict.get("object_active"), "object_active"), (scene_dict.get("object_passive"), "object_passive")]
+        entity = sorted(entity, key=lambda x: x[0].idx)
+        now = 0
+        for i, ent in enumerate(entity):
+            for j in range(ent[0].n_links):
+                now += 1
+                if ent[1] == "robot":
+                    mask[seg_np == now] = 1
+                elif ent[1] == "object_active":
+                    mask[seg_np == now] = 2
+                elif ent[1] == "object_passive":
+                    mask[seg_np == now] = 3
+
+        mask_image = mask
+    else:
+        # No segmentation available, fallback to simple nonzero depth mask if depth exists
+        if depth_image is not None:
+            mask_image = (depth_image > 0).astype(np.uint8) * 255
+        else:
+            mask_image = None
+
+    return rgb_image, depth_image, mask_image
             
 def read_h5_file(file_path):
     """
@@ -140,6 +182,26 @@ def visualize_rgb(rgb):
     cv2.destroyAllWindows()
     return
 
+def visualize_mask(mask, view=False):
+    if mask is None:
+        return None
+    h, w = mask.shape
+    vis = np.zeros((h, w, 3), dtype=np.uint8)
+    # from blue(0) -> red(max)
+    unique_vals = np.unique(mask)
+    print("unique mask vals:", unique_vals)
+    if len(unique_vals) <= 1:
+        vis[mask == unique_vals[0]] = (0, 0, 255)
+    else:
+        for i, val in enumerate(unique_vals):
+            color = (int(255 * i / (len(unique_vals) - 1)), 0, int(255 * (len(unique_vals) - 1 - i) / (len(unique_vals) - 1)))
+            vis[mask == val] = color
+    if view:
+        cv2.imshow("Mask Visualization", vis)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    return vis
+
 def visualize_rgbd(rgb, depth, camera_intr, depth_scale=1000.0):
     """
     输入:
@@ -187,8 +249,9 @@ if __name__ == "__main__":
     parser.add_argument("--demo_min_idx", type=int, default=0)
     parser.add_argument('--demo_num', type=int, default=200)
     parser.add_argument("--nots", action="store_true", default=False)
-    parser.add_argument('--render_types', default="rgb,depth", type=str, help='render types, comma separated, options: rgb, depth')
+    parser.add_argument('--render_types', default="rgb,depth,mask", type=str, help='render types, comma separated, options: rgb, depth, mask')
     args_cli = parser.parse_args()
+    os.makedirs(args_cli.record_dir, exist_ok=True)
     args_cli.render_types = args_cli.render_types.split(',')
     scene_config = yaml.safe_load(Path(args_cli.scene_cfg_path).open('r'))
     robot_config = yaml.safe_load(Path(args_cli.robot_cfg_path).open('r'))
@@ -214,7 +277,7 @@ if __name__ == "__main__":
             for h5_file_idx in tqdm(h5_file_idxs, desc="frame"):
                 h5_path = os.path.join(demo_dir, f"{h5_file_idx}.h5")
                 data = read_h5_file(h5_path)
-                rgb_image, depth_image = render_scene(scene, scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
+                rgb_image, depth_image, mask_image = render_scene(scene, scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
                 if args_cli.debug:
                     if "rgb" in args_cli.render_types and "depth" in args_cli.render_types:
                         visualize_rgbd(rgb_image, depth_image, camera_intr)
@@ -223,6 +286,8 @@ if __name__ == "__main__":
                         visualize_rgb(rgb_image)
                     if "depth" in args_cli.render_types:                        
                         visualize_depth(depth_image)
+                    if "mask" in args_cli.render_types and mask_image is not None:
+                        visualize_mask(mask_image)
                 else:
                     if "rgb" in args_cli.render_types:                        
                         imageio.imwrite(h5_path.replace(".h5", ".jpg"), rgb_image, quality=90)
@@ -230,6 +295,11 @@ if __name__ == "__main__":
                         cv2.imwrite(h5_path.replace(".h5", "_depth.png"), depth_image)
                         depth_vis = visualize_depth(depth_image, view=False)
                         cv2.imwrite(h5_path.replace(".h5", "_depth_render.jpg"), depth_vis)
+                    if "mask" in args_cli.render_types and mask_image is not None:
+                        cv2.imwrite(h5_path.replace(".h5", "_mask.png"), mask_image)
+                        mask_vis = visualize_mask(mask_image, view=False)
+                        if mask_vis is not None:
+                            cv2.imwrite(h5_path.replace(".h5", "_mask_render.jpg"), mask_vis)
     def collect_demo_dirs():
         if not args_cli.nots:
             demo_dirs = []

@@ -58,38 +58,40 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
         )
     else:
         raise NotImplementedError(f"unknown robot asset type {robot_config['asset']}")
-    background = scene.add_entity(
-        material=gs.materials.Rigid(rho=3000, friction=0.1),
-        morph=gs.morphs.URDF(
-            file  = scene_config["background"]["asset"],
-            pos   = (0, 0, -robot_config["robot_to_table_height"] / 100 / 2),
-            quat  = (1, 0, 0, 0), # we use w-x-y-z convention for quaternions,
-            scale = 1.0,
-            decimate=False,
-            convexify=False,
-            fixed=True,
-        ),
-        # visualize_contact=True,
-        # vis_mode = "collision",
-    )
-    # background = scene.add_entity(
-    #     gs.morphs.Plane(pos   = (0, 0, -robot_config["robot_to_table_height"] / 100)),
-    #     material=gs.materials.Rigid(friction=0.1),
-    # )
+    try:
+        background = scene.add_entity(
+            material=gs.materials.Rigid(rho=3000, friction=0.1),
+            morph=gs.morphs.URDF(
+                file  = scene_config["background"]["asset"],
+                pos   = (0, 0, -robot_config["robot_to_table_height"] / 100 / 2),
+                quat  = (1, 0, 0, 0), # we use w-x-y-z convention for quaternions,
+                scale = 1.0,
+                decimate=False,
+                convexify=False,
+                fixed=True,
+            ),
+            # visualize_contact=True,
+            # vis_mode = "collision",
+        )
+    except:
+        background = scene.add_entity(
+            gs.morphs.Plane(pos   = (0, 0, -robot_config["robot_to_table_height"] / 100)),
+            material=gs.materials.Rigid(friction=0.1),
+        )
 
     grasp_cam = scene.add_camera(
-        res    = (1280, 720),
-        pos    = (0, -0.05, 1.0 + robot_config["robot_to_table_height"] / 100),
-        lookat = (0, -0.05, 0.0 + robot_config["robot_to_table_height"] / 100),
-        fov    = 30,
-        GUI    = False
+        res    = (scene_config["camera"]["grasp_cam"]["res"][0], scene_config["camera"]["grasp_cam"]["res"][1]),
+        pos    = (scene_config["camera"]["grasp_cam"]["pos"][0], scene_config["camera"]["grasp_cam"]["pos"][1], scene_config["camera"]["grasp_cam"]["pos"][2] + robot_config["robot_to_table_height"] / 100),
+        lookat = (scene_config["camera"]["grasp_cam"]["lookat"][0], scene_config["camera"]["grasp_cam"]["lookat"][1], scene_config["camera"]["grasp_cam"]["lookat"][2] + robot_config["robot_to_table_height"] / 100),
+        fov    = scene_config["camera"]["grasp_cam"]["fov"],
+        GUI    = scene_config["camera"]["grasp_cam"]["GUI"]
     )
     desk_cam = scene.add_camera(
-        res    = (1280, 720),
-        pos    = (1, 0.0, 0.5 + robot_config["robot_to_table_height"] / 100),
-        lookat = (0, 0.0, 0.0 + robot_config["robot_to_table_height"] / 100),
-        fov    = 60,
-        GUI    = False
+        res    = (scene_config["camera"]["desk_cam"]["res"][0], scene_config["camera"]["desk_cam"]["res"][1]),
+        pos    = (scene_config["camera"]["desk_cam"]["pos"][0], scene_config["camera"]["desk_cam"]["pos"][1], scene_config["camera"]["desk_cam"]["pos"][2] + robot_config["robot_to_table_height"] / 100),
+        lookat = (scene_config["camera"]["desk_cam"]["lookat"][0], scene_config["camera"]["desk_cam"]["lookat"][1], scene_config["camera"]["desk_cam"]["lookat"][2] + robot_config["robot_to_table_height"] / 100),
+        fov    = scene_config["camera"]["desk_cam"]["fov"],
+        GUI    = scene_config["camera"]["desk_cam"]["GUI"]
     )
     cams = {"grasp_cam": grasp_cam, "desk_cam": desk_cam}
     object_active_bbox, object_active_height = get_object_bbox_and_height(scene_config["object_active"]["mesh_asset"], scene_config["object_active"]["up_axis"])
