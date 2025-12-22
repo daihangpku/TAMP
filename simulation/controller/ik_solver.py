@@ -236,14 +236,17 @@ class MobileFrankaSolver:
         """
         self.tensor_args = TensorDeviceType()
         room_pose = [0.0, 0.0, -robot_config["robot_to_table_height"] / 100 / 2, 1.0, 0.0, 0.0, 0.0]
-        self.world_cfg = {
-            "mesh": {
-                "base_scene": {
-                    "pose": room_pose,
-                    "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["simple_mesh_asset"],
+        try:
+            self.world_cfg = {
+                "mesh": {
+                    "base_scene": {
+                        "pose": room_pose,
+                        "file_path": os.path.dirname(__file__) + "/../../" + scene_config["background"]["simple_mesh_asset"],
+                    },
                 },
-            },
-        }
+            }
+        except:
+            self.world_cfg = None
         self._initialize_robot_config()
         if not no_solver:
             self._initialize_solver(ik_type)

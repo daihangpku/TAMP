@@ -1,4 +1,4 @@
-task_name: banana_plate
+task_name: banana_plate_room
 
 camera:
   grasp_cam:

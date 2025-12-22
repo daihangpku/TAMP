@@ -242,42 +242,11 @@
       <geometry>
         <!--box size="0.01 0.01 0.01"/-->
         <!--mesh filename="meshes/visual/hand.obj"/-->
-        <mesh filename="meshes/collision/hand_gripper.obj"/>
+        <mesh filename="meshes/collision/hand.obj"/>
       </geometry>
     </collision>
   </link>
-  <joint name="ee_fixed_joint" type="fixed">
-    <parent link="panda_hand"/>
-    <child link="grasp_frame"/>
-    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0922 0.0"/-->
-    <!--origin rpy="-1.57 0.0 1.57" xyz="0.0 0. 0.0"/-->
-    <origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0 0.11"/> 
-  </joint>
-  <link name="grasp_frame">
-    <collision>
-      <geometry>
-        <box size="0.01 0.01 0.01"/>
-      </geometry>
 
-      <origin rpy="0 0 0" xyz="0.0 0 0"/>
-    </collision>
-  </link>
-    <joint name="ee_fixed_t" type="fixed">
-    <parent link="panda_hand"/>
-    <child link="ee_link"/>
-    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0922 0.0"/-->
-    <origin rpy="0 0.0 0" xyz="0.0 0. 0.1"/>
-    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0 0.1"/--> 
-    </joint>
-  <link name="ee_link"/>
-  <link name="ee_grasp_frame"/>
-  <joint name="ee_grasp_joint" type="fixed">
-    <parent link="panda_hand"/>
-    <child link="ee_grasp_frame"/>
-    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0922 0.0"/-->
-    <origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0 0.0"/> 
-    <!--origin rpy="0.0 0.0 1.570796325" xyz="0.0 0.0 0.1"/--> 
-  </joint>
 
  
 
