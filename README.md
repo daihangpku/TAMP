@@ -123,5 +123,5 @@ bash scripts/train_policy.sh -a dp3 -t pick -i 0112 -s 0 -g 0 --zarr_path ../../
 ```
 ### eval
 ```bash
-python 3D-Diffusion-Policy/eval_real_robot_dp3.py -i /home/daihang/school/core/TAMP/policy/3D-Diffusion-Policy/3D-Diffusion-Policy/data/outputs/pick-dp3-0112_seed0/checkpoints/epoch=1800-test_mean_score=-0.001.ckpt -c -g
+python 3D-Diffusion-Policy/eval_real_robot_dp3.py -i /home/daihang/school/core/TAMP/policy/3D-Diffusion-Policy/3D-Diffusion-Policy/data/outputs/pick-dp3-0112_seed0/checkpoints/epoch=1800-test_mean_score=-0.001.ckpt -c -g --config config/banana_plate.yaml
 ```
