@@ -186,7 +186,7 @@ def visualize_mask(mask, view=False):
     vis = np.zeros((h, w, 3), dtype=np.uint8)
     # from blue(0) -> red(max)
     unique_vals = np.unique(mask)
-    print("unique mask vals:", unique_vals)
+    # print("unique mask vals:", unique_vals)
     if len(unique_vals) <= 1:
         vis[mask == unique_vals[0]] = (0, 0, 255)
     else:

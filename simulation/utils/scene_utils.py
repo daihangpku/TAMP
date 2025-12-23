@@ -45,6 +45,8 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
                 fixed = True
             ),
             material=gs.materials.Rigid(gravity_compensation=1.0),
+            # visualize_contact=True,
+            # vis_mode = "collision",
         )
     elif robot_config["asset"].endswith(".xml"):
         robot = scene.add_entity(
@@ -55,6 +57,8 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
                 scale = 1.0,
             ),
             material=gs.materials.Rigid(gravity_compensation=1.0),
+            # visualize_contact=True,
+            # vis_mode = "collision",
         )
     else:
         raise NotImplementedError(f"unknown robot asset type {robot_config['asset']}")
