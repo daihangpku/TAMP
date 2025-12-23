@@ -117,7 +117,8 @@ bash scripts/eval.sh --input data/outputs/2025.12.09/14.30.09_train_diffusion_un
 ## dp3
 ```bash
 cd policy/3D-Diffusion-Policy
-python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate --save_dir ../../datasets/records --env_name banana_plate
+python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate --save_dir ../../datasets/records  --env_name banana_plate --config config/banana_plate.yaml --max_episodes 100
+# python scripts/check_zarr_pointcloud.py --zarr_path /home/daihang/school/core/TAMP/datasets/records/banana_plate_zarr_dp3_sim    
 bash scripts/train_policy.sh -a dp3 -t pick -i 0112 -s 0 -g 0 --zarr_path ../../../datasets/records/banana_plate_zarr_dp3_sim
 ```
 ### eval
