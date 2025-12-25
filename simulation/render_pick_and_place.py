@@ -86,10 +86,16 @@ def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_
         entity = sorted(entity, key=lambda x: x[0].idx)
         now = 0
         for i, ent in enumerate(entity):
-            for j in range(ent[0].n_links):
+            if ent[1] == "robot":
+                link_num = min(ent[0].n_links, 11)
+            else:
+                link_num = ent[0].n_links
+            for j in range(link_num):
                 now += 1
                 if ent[1] == "robot":
-                    mask[seg_np == now] = 1
+                    print("robot link:", j, link_num)
+                    if j >= link_num - 3:
+                        mask[seg_np == now] = 1
                 elif ent[1] == "object_active":
                     mask[seg_np == now] = 2
                 elif ent[1] == "object_passive":
@@ -186,12 +192,12 @@ def visualize_mask(mask, view=False):
     vis = np.zeros((h, w, 3), dtype=np.uint8)
     # from blue(0) -> red(max)
     unique_vals = np.unique(mask)
-    # print("unique mask vals:", unique_vals)
+    print("unique mask vals:", unique_vals)
     if len(unique_vals) <= 1:
         vis[mask == unique_vals[0]] = (0, 0, 255)
     else:
         for i, val in enumerate(unique_vals):
-            color = (int(255 * i / (len(unique_vals) - 1)), 0, int(255 * (len(unique_vals) - 1 - i) / (len(unique_vals) - 1)))
+            color = (int(255 * i / (len(unique_vals) - 1)), int(255 * (len(unique_vals) - 1 - i) / (len(unique_vals) - 1)), int(255 * (len(unique_vals) - 1 - i) / (len(unique_vals) - 1)))
             vis[mask == val] = color
     if view:
         cv2.imshow("Mask Visualization", vis)
