@@ -297,8 +297,8 @@ def main(args):
         ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["skill_2_height"] / 100],  default_ee_quat))))
         ee_goals.append(np.hstack(((object_passive_pos + [0, 0, scene_config["object_active"]["motion_2_height"] / 100],  default_ee_quat))))
         ee_goals = np.array(ee_goals)
-        print("ee_goals:")
-        print(ee_goals)
+        # print("ee_goals:")
+        # print(ee_goals)
         cprint(">>> Executing.", "yellow")
         try:
             # Execute plan
