@@ -6,3 +6,5 @@ assets/objects/
 policy/twinaligner-policy-2d
 **/build/
 simulation/test/
+.TimeRecord
+.vscode/

@@ -31,7 +31,7 @@ object_active:
   up_axis: z
   height_thres: 0.4 # cm
   motion_1_height: 20 # cm
-  skill_1_height: 6.2 # cm
+  skill_1_height: 7.2 # cm
   motion_2_height: 20 # cm
   skill_2_height: 12 # cm
   physic_params:
@@ -53,6 +53,6 @@ object_passive:
     y: 10.0 # cm
   up_axis: z
 
-far_threshold: 0.15
+far_threshold: 0.35
 near_threshold: 0.08
 collision_detection: True

@@ -78,9 +78,9 @@ def do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam
     fx, fy = topcam_intr[0, 0], topcam_intr[1, 1]
     cx, cy = topcam_intr[0, 2], topcam_intr[1, 2]
     
-    xmin, xmax = -0.59, 0.52
-    ymin, ymax = -0.30, 0.30
-    zmin, zmax = 0.5, 1.5
+    xmin, xmax = -0.80, 0.80
+    ymin, ymax = -0.80, 0.80
+    zmin, zmax = 0.5, 2.5
     lims = [xmin, xmax, ymin, ymax, zmin, zmax]
     
     xmap, ymap = np.arange(topcam_depth.shape[1]), np.arange(topcam_depth.shape[0])
@@ -94,7 +94,7 @@ def do_anygrasp(anygrasp_pipeline, topcam_rgb, topcam_depth, topcam_extr, topcam
     points = points[mask].astype(np.float32)
     colors = topcam_rgb[mask].astype(np.float32) / 255
         
-    gg, cloud = anygrasp_pipeline.get_grasp(points, colors, lims=lims, apply_object_mask=True, dense_grasp=False, collision_detection=collision_detection)
+    gg, cloud = anygrasp_pipeline.get_grasp(points, colors, lims=lims, apply_object_mask=False, dense_grasp=False, collision_detection=collision_detection)
 
     if len(gg) == 0:
         print('No Grasp detected after collision detection!')
@@ -243,11 +243,13 @@ def main(args):
                 cprint("active-passive too near", "yellow")
                 break
             
-        default_ee_quat = controller.franka.get_link("hand").get_quat().cpu().numpy()
+        default_ee_quat = controller.franka.get_link(robot_config["ee_link"]).get_quat().cpu().numpy()
         controller.start_record()
-        for i in range(500):
+        for i in range(100):
             joint_pos = robot.get_dofs_position().cpu().numpy()
             joint_pos[:] = 0
+            if len(joint_pos) >= 10:
+                joint_pos[0] = 3
             robot.set_dofs_position(joint_pos)
             scene.step()
             
@@ -309,8 +311,8 @@ def main(args):
             controller.move_to_goal(ee_goals[4, 0:3], ee_goals[4, 3:7], gripper_open=False)
             controller.open_gripper(wait_steps=50)
             controller.move_to_goal(ee_goals[5, 0:3], ee_goals[5, 3:7], gripper_open=True)
-        except:
-            cprint(">>> Executing Failed. Reset.", "yellow")
+        except Exception as e:
+            cprint(f">>> Executing Failed. Reset. Error: {e}", "yellow")
             continue
         
         # Judge and save

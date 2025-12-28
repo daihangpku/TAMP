@@ -253,6 +253,9 @@ if __name__ == "__main__":
     parser.add_argument('--demo_num', type=int, default=200)
     parser.add_argument("--nots", action="store_true", default=False)
     parser.add_argument('--render_types', default="rgb,depth,mask", type=str, help='render types, comma separated, options: rgb, depth, mask')
+    parser.add_argument('--save_video', action='store_true', default=False, help='also save rgb as a video per demo dir')
+    parser.add_argument('--video_fps', type=int, default=30, help='video frames per second')
+    parser.add_argument('--video_name', type=str, default='rgb_video.mp4', help='output video file name (per demo dir)')
     args_cli = parser.parse_args()
     os.makedirs(args_cli.record_dir, exist_ok=True)
     args_cli.render_types = args_cli.render_types.split(',')
@@ -277,32 +280,58 @@ if __name__ == "__main__":
         for demo_dir in tqdm(demo_dirs, desc="demo"):
             h5_file_idxs = [int(file.replace(".h5", "")) for file in os.listdir(demo_dir) if file.endswith(".h5") and int(file.replace(".h5", "")) % args_cli.mod == 0]
             h5_file_idxs = sorted(h5_file_idxs)
-            for h5_file_idx in tqdm(h5_file_idxs, desc="frame"):
-                h5_path = os.path.join(demo_dir, f"{h5_file_idx}.h5")
-                data = read_h5_file(h5_path)
-                rgb_image, depth_image, mask_image = render_scene(scene, scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
-                if args_cli.debug:
-                    if "rgb" in args_cli.render_types and "depth" in args_cli.render_types:
-                        visualize_rgbd(rgb_image, depth_image, camera_intr)
-                        print("saved rgbd to debug.ply in current directory")
-                    if "rgb" in args_cli.render_types:
-                        visualize_rgb(rgb_image)
-                    if "depth" in args_cli.render_types:                        
-                        visualize_depth(depth_image)
-                    if "mask" in args_cli.render_types and mask_image is not None:
-                        visualize_mask(mask_image)
-                else:
-                    if "rgb" in args_cli.render_types:                        
-                        imageio.imwrite(h5_path.replace(".h5", ".jpg"), rgb_image, quality=90)
-                    if "depth" in args_cli.render_types:
-                        cv2.imwrite(h5_path.replace(".h5", "_depth.png"), depth_image)
-                        depth_vis = visualize_depth(depth_image, view=False)
-                        cv2.imwrite(h5_path.replace(".h5", "_depth_render.jpg"), depth_vis)
-                    if "mask" in args_cli.render_types and mask_image is not None:
-                        cv2.imwrite(h5_path.replace(".h5", "_mask.png"), mask_image)
-                        mask_vis = visualize_mask(mask_image, view=False)
-                        if mask_vis is not None:
-                            cv2.imwrite(h5_path.replace(".h5", "_mask_render.jpg"), mask_vis)
+            # Optionally open a video writer for this demo (only when saving video and rgb is enabled and not in debug mode)
+            video_writer = None
+            if args_cli.save_video and ("rgb" in args_cli.render_types) and (not args_cli.debug):
+                video_path = os.path.join(demo_dir, args_cli.video_name)
+                try:
+                    video_writer = imageio.get_writer(video_path, fps=args_cli.video_fps)
+                except Exception:
+                    video_writer = None
+
+            try:
+                for h5_file_idx in tqdm(h5_file_idxs, desc="frame"):
+                    h5_path = os.path.join(demo_dir, f"{h5_file_idx}.h5")
+                    data = read_h5_file(h5_path)
+                    rgb_image, depth_image, mask_image = render_scene(scene, scene_dict, data, desk_cam, args_cli, render_types=args_cli.render_types)
+                    if args_cli.debug:
+                        if "rgb" in args_cli.render_types and "depth" in args_cli.render_types:
+                            visualize_rgbd(rgb_image, depth_image, camera_intr)
+                            print("saved rgbd to debug.ply in current directory")
+                        if "rgb" in args_cli.render_types:
+                            visualize_rgb(rgb_image)
+                        if "depth" in args_cli.render_types:                        
+                            visualize_depth(depth_image)
+                        if "mask" in args_cli.render_types and mask_image is not None:
+                            visualize_mask(mask_image)
+                    else:
+                        if "rgb" in args_cli.render_types and rgb_image is not None:                        
+                            imageio.imwrite(h5_path.replace(".h5", ".jpg"), rgb_image, quality=90)
+                            if video_writer is not None:
+                                try:
+                                    # ensure uint8
+                                    frame = rgb_image
+                                    if frame.dtype != np.uint8:
+                                        frame = frame.astype(np.uint8)
+                                    video_writer.append_data(frame)
+                                except Exception:
+                                    # ignore frame write errors and continue
+                                    pass
+                        if "depth" in args_cli.render_types and depth_image is not None:
+                            cv2.imwrite(h5_path.replace(".h5", "_depth.png"), depth_image)
+                            depth_vis = visualize_depth(depth_image, view=False)
+                            cv2.imwrite(h5_path.replace(".h5", "_depth_render.jpg"), depth_vis)
+                        if "mask" in args_cli.render_types and mask_image is not None:
+                            cv2.imwrite(h5_path.replace(".h5", "_mask.png"), mask_image)
+                            mask_vis = visualize_mask(mask_image, view=False)
+                            if mask_vis is not None:
+                                cv2.imwrite(h5_path.replace(".h5", "_mask_render.jpg"), mask_vis)
+            finally:
+                if video_writer is not None:
+                    try:
+                        video_writer.close()
+                    except Exception:
+                        pass
     def collect_demo_dirs():
         if not args_cli.nots:
             demo_dirs = []

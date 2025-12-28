@@ -71,7 +71,7 @@ def design_pnp_scene(scene_config, robot_config, show_viewer=True):
                 quat  = (1, 0, 0, 0), # we use w-x-y-z convention for quaternions,
                 scale = 1.0,
                 decimate=False,
-                convexify=False,
+                convexify=True,
                 fixed=True,
             ),
             # visualize_contact=True,
