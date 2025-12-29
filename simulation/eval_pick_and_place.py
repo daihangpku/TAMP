@@ -168,6 +168,7 @@ def main(args):
     
     pub_image = rospy.Publisher('/genesis/color_image', Image, queue_size=1)
     pub_depth = rospy.Publisher('/genesis/depth_image', Image, queue_size=1)
+    pub_mask = rospy.Publisher('/genesis/mask_image', Image, queue_size=1)
     
     while True:
         if not listener.is_alive():
@@ -201,6 +202,16 @@ def main(args):
         ros_depth.step = ros_depth.width * 4
         ros_depth.data = depth_image.astype(np.float32).tobytes()
         pub_depth.publish(ros_depth)
+
+        ros_mask = Image()
+        ros_mask.header.stamp = ros_image.header.stamp
+        ros_mask.header.frame_id = "camera_frame"
+        ros_mask.height = mask_image.shape[0]
+        ros_mask.width = mask_image.shape[1]
+        ros_mask.encoding = "32FC1"
+        ros_mask.step = ros_mask.width * 4
+        ros_mask.data = mask_image.astype(np.uint8).tobytes()
+        pub_mask.publish(ros_mask)
 
         controller.step()
         home_robot = rospy.get_param("/genesis/reset_robot", False)

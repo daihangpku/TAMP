@@ -93,7 +93,7 @@ def render_scene(scene, scene_dict, data, cam, args_cli=None, znear=0.1, render_
             for j in range(link_num):
                 now += 1
                 if ent[1] == "robot":
-                    print("robot link:", j, link_num)
+                    # print("robot link:", j, link_num)
                     if j >= link_num - 3:
                         mask[seg_np == now] = 1
                 elif ent[1] == "object_active":
@@ -192,7 +192,7 @@ def visualize_mask(mask, view=False):
     vis = np.zeros((h, w, 3), dtype=np.uint8)
     # from blue(0) -> red(max)
     unique_vals = np.unique(mask)
-    print("unique mask vals:", unique_vals)
+    # print("unique mask vals:", unique_vals)
     if len(unique_vals) <= 1:
         vis[mask == unique_vals[0]] = (0, 0, 255)
     else:
