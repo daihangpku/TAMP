@@ -107,7 +107,7 @@ _mask.png中0是background 1是robot 2是active object 3是passive object
 ```bash
 cd policy/diffusion_policy_tamp
 conda activate robodiff
-bash scripts/generate_data.sh -i /home/daihang/school/core/TAMP/datasets/records/banana_plate_room_simple --gripper True -s --use_all_joints # convert2zarr
+bash scripts/generate_data.sh -i /home/daihang/school/core/TAMP/datasets/records/banana_plate_room_simple --gripper True -s --use_all_joints -m xxx # convert2zarr
 bash scripts/train.sh --input /home/daihang/school/core/TAMP/datasets/records/banana_plate_room_zarr_dp_sim_demonum120/train --task pnp --dim 11 # train
 ```
 ### eval
