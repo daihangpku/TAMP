@@ -91,9 +91,14 @@ cd policy/diffusion_policy_tamp
 export SETUPTOOLS_USE_DISTUTILS=stdlib
 python simulation/teleop_pick_and_place.py --mode "keyboard"
 ```
+## auto
+```bash
+export SETUPTOOLS_USE_DISTUTILS=stdlib
+python simulation/auto_collect_pick_and_place.py --scene_cfg_path simulation/configs/scene/banana_plate_room_simple.yaml --robot_cfg_path simulation/configs/robot/mobile_franka.yaml 
+```
 ## render
 ```bash
-python simulation/render_pick_and_place.py --record_dir datasets/records/banana_plate/ --cfg_path simulation/configs/banana_plate.yaml
+python simulation/render_pick_and_place.py --record_dir datasets/records/banana_plate_room_simple/ --scene_cfg_path simulation/configs/scene/banana_plate_room_simple.yaml --robot_cfg_path simulation/configs/robot/mobile_franka.yaml --save_video
 ```
 _mask.png中0是background 1是robot 2是active object 3是passive object
 
@@ -102,26 +107,27 @@ _mask.png中0是background 1是robot 2是active object 3是passive object
 ```bash
 cd policy/diffusion_policy_tamp
 conda activate robodiff
-bash scripts/generate_data.sh -i ../../datasets/records/banana_plate --gripper True --sim # convert2zarr
-bash scripts/train.sh --input /home/daihang/school/core/TAMP/datasets/records/banana_plate_zarr_dp_sim_demonum2/train --task pnp # train
+bash scripts/generate_data.sh -i /home/daihang/school/core/TAMP/datasets/records/banana_plate_room_simple --gripper True -s --use_all_joints # convert2zarr
+bash scripts/train.sh --input /home/daihang/school/core/TAMP/datasets/records/banana_plate_room_zarr_dp_sim_demonum120/train --task pnp --dim 11 # train
 ```
 ### eval
 in one terminal at home dir with genesis env:
 ```bash
-python simulation/eval_pick_and_place.py 
+python simulation/eval_pick_and_place.py --scene_cfg_path simulation/configs/scene/banana_plate_room_simple.yaml --robot_cfg_path simulation/configs/robot/mobile_franka.yaml 
+
 ```
 in another at policy/diffusion_policy_tamp with robodiff env:
 ```bash
-bash scripts/eval.sh --input data/outputs/2025.12.09/14.30.09_train_diffusion_unet_image_real_image/checkpoints/latest.ckpt -g -s
+bash scripts/eval.sh --input data/outputs/2025.12.30/12.43.49_train_diffusion_unet_image_real_image/checkpoints/epoch=0300-train_loss=0.003.ckpt -g --use_all_joints
 ```
 ## dp3
 ```bash
 cd policy/3D-Diffusion-Policy
-python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate --save_dir ../../datasets/records  --env_name banana_plate --config config/banana_plate.yaml --max_episodes 100
+python scripts/generate_zarr.py --data_dir ../../datasets/records/banana_plate_room_simple --save_dir ../../datasets/records  --env_name banana_plate_room_simple --config config/banana_plate_room.yaml --max_episodes xxx
 # python scripts/check_zarr_pointcloud.py --zarr_path /home/daihang/school/core/TAMP/datasets/records/banana_plate_zarr_dp3_sim    
-bash scripts/train_policy.sh -a dp3 -t pick -i 0112 -s 0 -g 0 --zarr_path ../../../datasets/records/banana_plate_zarr_dp3_sim
+bash scripts/train_policy.sh -a dp3 -t pick -i any_notes -s 0 -g 0 --zarr_path ../../../datasets/records/banana_plate_zarr_dp3_sim
 ```
 ### eval
 ```bash
-python 3D-Diffusion-Policy/eval_real_robot_dp3.py -i /home/daihang/school/core/TAMP/policy/3D-Diffusion-Policy/3D-Diffusion-Policy/data/outputs/pick-dp3-0112_seed0/checkpoints/epoch=1800-test_mean_score=-0.001.ckpt -c -g --config config/banana_plate.yaml
+python 3D-Diffusion-Policy/eval_real_robot_dp3.py -i /home/daihang/school/core/TAMP/policy/3D-Diffusion-Policy/3D-Diffusion-Policy/data/outputs/pick-dp3-mobile_simple_seed0/latest.ckpt -c -g --config config/banana_plate_room.yaml
 ```
