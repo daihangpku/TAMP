@@ -110,16 +110,16 @@ def main(args):
             else:
                 cprint("active out of range", "yellow")
                 continue
-            if (
-                passive_aabb[0, 0] > scene_config["object_passive"]["pos_range"]["x"][0] / 100
-                and passive_aabb[0, 1] > scene_config["object_passive"]["pos_range"]["y"][0] / 100
-                and passive_aabb[1, 0] < scene_config["object_passive"]["pos_range"]["x"][1] / 100
-                and passive_aabb[1, 1] < scene_config["object_passive"]["pos_range"]["y"][1] / 100
-            ):
-                pass
-            else:
-                cprint("passive out of range", "yellow")
-                continue
+            # if (
+            #     passive_aabb[0, 0] > scene_config["object_passive"]["pos_range"]["x"][0] / 100
+            #     and passive_aabb[0, 1] > scene_config["object_passive"]["pos_range"]["y"][0] / 100
+            #     and passive_aabb[1, 0] < scene_config["object_passive"]["pos_range"]["x"][1] / 100
+            #     and passive_aabb[1, 1] < scene_config["object_passive"]["pos_range"]["y"][1] / 100
+            # ):
+            #     pass
+            # else:
+            #     cprint("passive out of range", "yellow")
+            #     continue
             active_xyaabb = active_aabb.cpu().numpy()[:2, :2]
             passive_xyaabb = passive_aabb.cpu().numpy()[:2, :2]
             x_overlap = active_xyaabb[0, 0] < passive_xyaabb[1, 0] and active_xyaabb[1, 0] > passive_xyaabb[0, 0]
@@ -129,7 +129,7 @@ def main(args):
                 continue
             if np.linalg.norm(passive_pos - active_pos) > scene_config["far_threshold"]:
                 cprint("active-passive too near", "yellow")
-                break
+            break
 
     
     input_queue = queue.Queue()

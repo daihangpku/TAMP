@@ -193,7 +193,7 @@ class franka_controller:
                     target_ee_pose = self.franka_solver.compute_fk(waypoint)[0]
                     current_ee_pose = self.franka_solver.compute_fk(self.franka.get_dofs_position().cpu().numpy()[:-2])[0]
                     wait_cnt = 0
-                    while(target_ee_pose is not None and not np.allclose(np.array(current_ee_pose).flatten(), np.array(target_ee_pose).flatten(), atol=1e-2)):
+                    while(target_ee_pose is not None and not np.allclose(np.array(current_ee_pose).flatten(), np.array(target_ee_pose).flatten(), atol=2e-2)):
                         self.step()
                         wait_cnt += 1
                         if wait_cnt > 200:
